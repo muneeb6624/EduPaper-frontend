@@ -20,11 +20,13 @@ import {
   Bell
 } from 'lucide-react';
 import { selectCurrentUser, selectUserRole, logout } from '../../features/auth/authSlice';
+import StudentDashboard from './StudentDashboard';
+import TeacherDashboard from './TeacherDashboard';
 
 const Dashboard = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
-  
+
   const user = useSelector(selectCurrentUser);
   const userRole = useSelector(selectUserRole);
   const dispatch = useDispatch();
@@ -49,7 +51,7 @@ const Dashboard = ({ children }) => {
           { id: 'results', label: 'My Results', icon: Award, path: '/results' },
           { id: 'history', label: 'Exam History', icon: Clock, path: '/history' },
         ];
-      
+
       case 'teacher':
         return [
           ...common,
@@ -58,7 +60,7 @@ const Dashboard = ({ children }) => {
           { id: 'grading', label: 'Grading', icon: GraduationCap, path: '/grading' },
           { id: 'analytics', label: 'Analytics', icon: BarChart3, path: '/analytics' },
         ];
-      
+
       case 'admin':
         return [
           ...common,
@@ -67,13 +69,30 @@ const Dashboard = ({ children }) => {
           { id: 'analytics', label: 'System Analytics', icon: BarChart3, path: '/admin/analytics' },
           { id: 'settings', label: 'Settings', icon: Settings, path: '/admin/settings' },
         ];
-      
+
       default:
         return common;
     }
   };
 
   const navigationItems = getNavigationItems();
+
+  const renderDashboardContent = () => {
+    if (children) {
+      return children;
+    }
+
+    switch (userRole) {
+      case 'student':
+        return <StudentDashboard />;
+      case 'teacher':
+        return <TeacherDashboard />;
+      case 'admin':
+        return <AdminDashboardContent />;
+      default:
+        return <DefaultDashboardContent />;
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
@@ -113,7 +132,7 @@ const Dashboard = ({ children }) => {
                 <p className="text-xs text-gray-400 capitalize">{userRole} Portal</p>
               </div>
             </motion.div>
-            
+
             <button
               onClick={() => setSidebarOpen(false)}
               className="lg:hidden p-2 hover:bg-gray-800 rounded-lg transition-colors"
@@ -145,7 +164,7 @@ const Dashboard = ({ children }) => {
               {navigationItems.map((item) => {
                 const IconComponent = item.icon;
                 const isActive = activeTab === item.id;
-                
+
                 return (
                   <li key={item.id}>
                     <motion.button
@@ -198,7 +217,7 @@ const Dashboard = ({ children }) => {
               >
                 <Menu className="w-5 h-5" />
               </button>
-              
+
               <div>
                 <h2 className="text-xl font-semibold text-white">
                   {navigationItems.find(item => item.id === activeTab)?.label || 'Dashboard'}
@@ -223,13 +242,14 @@ const Dashboard = ({ children }) => {
         </header>
 
         {/* Content Area */}
-        <main className="p-6">
+        <main className="overflow-hidden">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
+            className="h-full"
           >
-            {children || <DashboardContent activeTab={activeTab} userRole={userRole} />}
+            {renderDashboardContent()}
           </motion.div>
         </main>
       </div>
@@ -237,131 +257,66 @@ const Dashboard = ({ children }) => {
   );
 };
 
-// Default Dashboard Content
-const DashboardContent = ({ activeTab, userRole }) => {
-  const getRoleSpecificContent = () => {
-    switch (userRole) {
-      case 'student':
-        return (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <StatCard
-              title="Available Exams"
-              value="5"
-              subtitle="Ready to take"
-              icon={FileText}
-              color="from-blue-600 to-cyan-600"
-            />
-            <StatCard
-              title="Completed Exams"
-              value="12"
-              subtitle="This semester"
-              icon={Award}
-              color="from-green-600 to-emerald-600"
-            />
-            <StatCard
-              title="Average Score"
-              value="87%"
-              subtitle="Last 5 exams"
-              icon={BarChart3}
-              color="from-purple-600 to-pink-600"
-            />
-          </div>
-        );
-      
-      case 'teacher':
-        return (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <StatCard
-              title="My Papers"
-              value="8"
-              subtitle="Created papers"
-              icon={FileText}
-              color="from-blue-600 to-cyan-600"
-            />
-            <StatCard
-              title="Active Exams"
-              value="3"
-              subtitle="Currently running"
-              icon={Clock}
-              color="from-green-600 to-emerald-600"
-            />
-            <StatCard
-              title="Pending Grading"
-              value="15"
-              subtitle="Need attention"
-              icon={GraduationCap}
-              color="from-orange-600 to-red-600"
-            />
-            <StatCard
-              title="Total Students"
-              value="124"
-              subtitle="Across all papers"
-              icon={Users}
-              color="from-purple-600 to-pink-600"
-            />
-          </div>
-        );
-      
-      case 'admin':
-        return (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <StatCard
-              title="Total Users"
-              value="1,234"
-              subtitle="Students & Teachers"
-              icon={Users}
-              color="from-blue-600 to-cyan-600"
-            />
-            <StatCard
-              title="Total Papers"
-              value="89"
-              subtitle="All papers"
-              icon={FileText}
-              color="from-green-600 to-emerald-600"
-            />
-            <StatCard
-              title="Active Exams"
-              value="12"
-              subtitle="Currently running"
-              icon={Clock}
-              color="from-orange-600 to-red-600"
-            />
-            <StatCard
-              title="System Health"
-              value="98%"
-              subtitle="Uptime"
-              icon={BarChart3}
-              color="from-purple-600 to-pink-600"
-            />
-          </div>
-        );
-      
-      default:
-        return <div>Loading dashboard...</div>;
-    }
-  };
-
+// Admin Dashboard Content
+const AdminDashboardContent = () => {
   return (
-    <div className="space-y-8">
-      <div>
-        <h3 className="text-2xl font-bold text-white mb-6">Overview</h3>
-        {getRoleSpecificContent()}
-      </div>
-      
-      {/* Recent Activity */}
-      <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/50">
-        <h4 className="text-lg font-semibold text-white mb-4">Recent Activity</h4>
-        <div className="space-y-3">
-          {[1, 2, 3].map((item) => (
-            <div key={item} className="flex items-center space-x-4 p-3 bg-gray-700/30 rounded-lg">
-              <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-              <div className="flex-1">
-                <p className="text-white text-sm">Sample activity {item}</p>
-                <p className="text-gray-400 text-xs">2 hours ago</p>
-              </div>
-            </div>
-          ))}
+    <div className="min-h-screen bg-slate-950 p-6">
+      <motion.div
+        className="max-w-7xl mx-auto"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+      >
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <StatCard
+            title="Total Users"
+            value="1,234"
+            subtitle="Students & Teachers"
+            icon={Users}
+            color="from-blue-600 to-cyan-600"
+          />
+          <StatCard
+            title="Total Papers"
+            value="89"
+            subtitle="All papers"
+            icon={FileText}
+            color="from-green-600 to-emerald-600"
+          />
+          <StatCard
+            title="Active Exams"
+            value="12"
+            subtitle="Currently running"
+            icon={Clock}
+            color="from-orange-600 to-red-600"
+          />
+          <StatCard
+            title="System Health"
+            value="98%"
+            subtitle="Uptime"
+            icon={BarChart3}
+            color="from-purple-600 to-pink-600"
+          />
         </div>
+
+        {/* Recent Activity */}
+        <div className="glass-card p-6">
+          <h4 className="text-lg font-semibold text-white mb-4">System Overview</h4>
+          <div className="text-center text-gray-400">
+            <p>Admin dashboard content coming soon...</p>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+// Default Dashboard Content
+const DefaultDashboardContent = () => {
+  return (
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="text-center">
+        <h1 className="text-4xl font-bold text-white mb-4">Dashboard</h1>
+        <p className="text-slate-300">Loading...</p>
       </div>
     </div>
   );
@@ -370,7 +325,7 @@ const DashboardContent = ({ activeTab, userRole }) => {
 // Stat Card Component
 const StatCard = ({ title, value, subtitle, icon: Icon, color }) => (
   <motion.div
-    className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/50 hover:border-gray-600/50 transition-all duration-300"
+    className="glass-card p-6"
     whileHover={{ scale: 1.02, y: -2 }}
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
