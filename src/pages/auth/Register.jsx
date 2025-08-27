@@ -138,7 +138,7 @@ const Register = () => {
         {/* Form */}
         <motion.form
           onSubmit={handleSubmit}
-          className="bg-gray-800/80 backdrop-blur-sm rounded-2xl p-8 shadow-2xl border border-gray-700/50"
+          className="bg-gray-800/80 flex justify-center align-middle content-center flex-col backdrop-blur-sm rounded-2xl p-8 shadow-2xl border border-gray-700/50"
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.2, duration: 0.6 }}
