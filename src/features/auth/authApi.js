@@ -1,3 +1,4 @@
+
 // src/features/auth/authApi.js
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { logout } from './authSlice';
@@ -5,10 +6,9 @@ import { logout } from './authSlice';
 export const selectIsAuthenticated = (state) => state.auth.isAuthenticated;
 export const selectUserRole = (state) => state.auth.user?.role || null;
 
-
 // Base query with auth token injection
 const baseQuery = fetchBaseQuery({
-  baseUrl: 'http://localhost:5000/api/auth', // Update with your backend URL
+  baseUrl: 'http://localhost:5000/api/auth',
   prepareHeaders: (headers, { getState }) => {
     const token = getState().auth.token;
 
@@ -47,14 +47,13 @@ export const authApi = createApi({
         body: credentials,
       }),
       transformResponse: (response) => {
-        // Backend returns { token, role, test }
+        // Backend returns { success, token, user }
         return {
           token: response.token,
-          role: response.role,
-          user: {
+          user: response.user || {
             role: response.role,
-            name: 'User', // Will be updated after fetching profile
-            email: ''
+            name: response.name || 'User',
+            email: response.email || ''
           }
         };
       },
@@ -68,11 +67,10 @@ export const authApi = createApi({
         body: userData,
       }),
       transformResponse: (response) => {
-        // Backend returns { token }
+        // Backend returns { success, token, user }
         return {
           token: response.token,
-          role: userData.role,
-          user: {
+          user: response.user || {
             role: userData.role,
             name: userData.name,
             email: userData.email

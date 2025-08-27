@@ -1,12 +1,16 @@
+
+// src/features/attempts/attemptApi.js
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
 const baseQuery = fetchBaseQuery({
   baseUrl: 'http://localhost:5000/api/attempts',
   prepareHeaders: (headers, { getState }) => {
     const token = getState().auth.token;
+    
     if (token) {
       headers.set('authorization', `Bearer ${token}`);
     }
+    
     headers.set('Content-Type', 'application/json');
     return headers;
   },
@@ -17,30 +21,42 @@ export const attemptApi = createApi({
   baseQuery,
   tagTypes: ['Attempt'],
   endpoints: (builder) => ({
+    // Start attempt
     startAttempt: builder.mutation({
-      query: (paperId) => ({
-        url: `/papers/${paperId}/attempt`,
-        method: 'GET',
+      query: (attemptData) => ({
+        url: '/start',
+        method: 'POST',
+        body: attemptData,
       }),
       invalidatesTags: ['Attempt'],
     }),
 
+    // Submit attempt
     submitAttempt: builder.mutation({
-      query: ({ paperId, answers }) => ({
-        url: `/papers/${paperId}/submit`,
+      query: ({ attemptId, answers }) => ({
+        url: `/${attemptId}/submit`,
         method: 'POST',
         body: { answers },
       }),
       invalidatesTags: ['Attempt'],
     }),
 
-    gradeAttempt: builder.mutation({
-      query: ({ id, gradedAnswers }) => ({
-        url: `/attempts/${id}/grade`,
-        method: 'PUT',
-        body: { gradedAnswers },
-      }),
-      invalidatesTags: ['Attempt'],
+    // Get student attempts
+    getStudentAttempts: builder.query({
+      query: (studentId) => `/student/${studentId}`,
+      providesTags: ['Attempt'],
+    }),
+
+    // Get paper attempts
+    getPaperAttempts: builder.query({
+      query: (paperId) => `/paper/${paperId}`,
+      providesTags: ['Attempt'],
+    }),
+
+    // Get single attempt
+    getAttempt: builder.query({
+      query: (id) => `/${id}`,
+      providesTags: (result, error, id) => [{ type: 'Attempt', id }],
     }),
   }),
 });
@@ -48,5 +64,7 @@ export const attemptApi = createApi({
 export const {
   useStartAttemptMutation,
   useSubmitAttemptMutation,
-  useGradeAttemptMutation,
+  useGetStudentAttemptsQuery,
+  useGetPaperAttemptsQuery,
+  useGetAttemptQuery,
 } = attemptApi;
