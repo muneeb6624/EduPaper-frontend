@@ -1,16 +1,15 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Provider, useSelector } from 'react-redux';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { store } from './store/store';
-import { selectIsAuthenticated, selectUserRole } from './features/auth/authSlice'; // Fixed import
+import { selectIsAuthenticated, selectUserRole } from './features/auth/authSlice';
 
 // Components
 import LoadingScreen from './components/ui/Loader'
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import Dashboard from './pages/dashboard/Dashboard';
-import ProtectedRoute from './components/ProtectedRoute';
-import PublicRoute from './components/PublicRoute';
 import ExamInterface from './components/ui/ExamInterface';
 import PaperCreator from './components/ui/PaperCreator';
 
@@ -41,17 +40,10 @@ const PublicRoute = ({ children }) => {
   return children;
 };
 
-// Role-based Dashboard Router
-const DashboardRouter = () => {
-  const userRole = useSelector(selectUserRole);
-
-  // For now, return the same dashboard for all roles
-  // You can create separate components later
-  return <Dashboard />;
-};
-
 // App Routes Component
 const AppRoutes = () => {
+  const userRole = useSelector(selectUserRole);
+
   return (
     <Router>
       <Routes>
@@ -78,7 +70,7 @@ const AppRoutes = () => {
           path="/dashboard"
           element={
             <ProtectedRoute>
-              <DashboardRouter />
+              <Dashboard />
             </ProtectedRoute>
           }
         />
@@ -87,7 +79,7 @@ const AppRoutes = () => {
           path="/home"
           element={
             <ProtectedRoute>
-              <DashboardRouter />
+              <Dashboard />
             </ProtectedRoute>
           }
         />
@@ -97,12 +89,14 @@ const AppRoutes = () => {
           path="/exams"
           element={
             <ProtectedRoute allowedRoles={['student']}>
-              <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
-                <div className="text-center">
-                  <h1 className="text-4xl font-bold mb-4">Student Exams</h1>
-                  <p className="text-slate-300">Coming soon...</p>
+              <Dashboard>
+                <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
+                  <div className="text-center">
+                    <h1 className="text-4xl font-bold mb-4">Student Exams</h1>
+                    <p className="text-slate-300">Browse all available exams</p>
+                  </div>
                 </div>
-              </div>
+              </Dashboard>
             </ProtectedRoute>
           }
         />
@@ -120,12 +114,30 @@ const AppRoutes = () => {
           path="/results"
           element={
             <ProtectedRoute allowedRoles={['student']}>
-              <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
-                <div className="text-center">
-                  <h1 className="text-4xl font-bold mb-4">My Results</h1>
-                  <p className="text-slate-300">Coming soon...</p>
+              <Dashboard>
+                <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
+                  <div className="text-center">
+                    <h1 className="text-4xl font-bold mb-4">My Results</h1>
+                    <p className="text-slate-300">View your exam results</p>
+                  </div>
                 </div>
-              </div>
+              </Dashboard>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/history"
+          element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <Dashboard>
+                <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
+                  <div className="text-center">
+                    <h1 className="text-4xl font-bold mb-4">Exam History</h1>
+                    <p className="text-slate-300">View your exam history</p>
+                  </div>
+                </div>
+              </Dashboard>
             </ProtectedRoute>
           }
         />
@@ -135,12 +147,14 @@ const AppRoutes = () => {
           path="/papers"
           element={
             <ProtectedRoute allowedRoles={['teacher']}>
-              <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
-                <div className="text-center">
-                  <h1 className="text-4xl font-bold mb-4">My Papers</h1>
-                  <p className="text-slate-300">Coming soon...</p>
+              <Dashboard>
+                <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
+                  <div className="text-center">
+                    <h1 className="text-4xl font-bold mb-4">My Papers</h1>
+                    <p className="text-slate-300">Manage your papers</p>
+                  </div>
                 </div>
-              </div>
+              </Dashboard>
             </ProtectedRoute>
           }
         />
@@ -158,12 +172,14 @@ const AppRoutes = () => {
           path="/papers/:id/edit"
           element={
             <ProtectedRoute allowedRoles={['teacher']}>
-              <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
-                <div className="text-center">
-                  <h1 className="text-4xl font-bold mb-4">Edit Paper</h1>
-                  <p className="text-slate-300">Coming soon...</p>
+              <Dashboard>
+                <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
+                  <div className="text-center">
+                    <h1 className="text-4xl font-bold mb-4">Edit Paper</h1>
+                    <p className="text-slate-300">Edit your paper</p>
+                  </div>
                 </div>
-              </div>
+              </Dashboard>
             </ProtectedRoute>
           }
         />
@@ -172,12 +188,30 @@ const AppRoutes = () => {
           path="/grading"
           element={
             <ProtectedRoute allowedRoles={['teacher']}>
-              <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
-                <div className="text-center">
-                  <h1 className="text-4xl font-bold mb-4">Grading</h1>
-                  <p className="text-slate-300">Coming soon...</p>
+              <Dashboard>
+                <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
+                  <div className="text-center">
+                    <h1 className="text-4xl font-bold mb-4">Grading</h1>
+                    <p className="text-slate-300">Grade student submissions</p>
+                  </div>
                 </div>
-              </div>
+              </Dashboard>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/analytics"
+          element={
+            <ProtectedRoute allowedRoles={['teacher']}>
+              <Dashboard>
+                <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
+                  <div className="text-center">
+                    <h1 className="text-4xl font-bold mb-4">Analytics</h1>
+                    <p className="text-slate-300">View analytics and insights</p>
+                  </div>
+                </div>
+              </Dashboard>
             </ProtectedRoute>
           }
         />
@@ -187,12 +221,14 @@ const AppRoutes = () => {
           path="/admin/users"
           element={
             <ProtectedRoute allowedRoles={['admin']}>
-              <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
-                <div className="text-center">
-                  <h1 className="text-4xl font-bold mb-4">User Management</h1>
-                  <p className="text-slate-300">Coming soon...</p>
+              <Dashboard>
+                <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
+                  <div className="text-center">
+                    <h1 className="text-4xl font-bold mb-4">User Management</h1>
+                    <p className="text-slate-300">Manage system users</p>
+                  </div>
                 </div>
-              </div>
+              </Dashboard>
             </ProtectedRoute>
           }
         />
@@ -201,12 +237,14 @@ const AppRoutes = () => {
           path="/admin/analytics"
           element={
             <ProtectedRoute allowedRoles={['admin']}>
-              <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
-                <div className="text-center">
-                  <h1 className="text-4xl font-bold mb-4">Analytics</h1>
-                  <p className="text-slate-300">Coming soon...</p>
+              <Dashboard>
+                <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
+                  <div className="text-center">
+                    <h1 className="text-4xl font-bold mb-4">System Analytics</h1>
+                    <p className="text-slate-300">View system analytics</p>
+                  </div>
                 </div>
-              </div>
+              </Dashboard>
             </ProtectedRoute>
           }
         />

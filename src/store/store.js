@@ -1,10 +1,27 @@
-
 import { configureStore } from '@reduxjs/toolkit';
+import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import authReducer from '../features/auth/authSlice';
 import { authApi } from '../features/auth/authApi';
 import { paperApi } from '../features/papers/paperApi';
 import { attemptApi } from '../features/attempts/attemptApi';
 import { resultApi } from '../features/results/resultApi';
-import authReducer from '../features/auth/authSlice';
+
+// Create the main API slice
+export const api = createApi({
+  reducerPath: 'api',
+  baseQuery: fetchBaseQuery({
+    baseUrl: 'http://localhost:5000/api', // Point to your backend
+    prepareHeaders: (headers, { getState }) => {
+      const token = getState().auth.token;
+      if (token) {
+        headers.set('authorization', `Bearer ${token}`);
+      }
+      return headers;
+    },
+  }),
+  tagTypes: ['User', 'Paper', 'Attempt', 'Result'],
+  endpoints: () => ({}),
+});
 
 export const store = configureStore({
   reducer: {

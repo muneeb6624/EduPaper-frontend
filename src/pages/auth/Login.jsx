@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
@@ -52,7 +51,8 @@ const Login = () => {
     try {
       const res = await loginUser(formData).unwrap();
       dispatch(setCredentials(res));
-      navigate('/dashboard');
+      // Always redirect to dashboard - it will show role-specific content
+        navigate('/dashboard');
     } catch (err) {
       console.error('Login error:', err);
       setShowError(true);
@@ -102,7 +102,7 @@ const Login = () => {
           >
             <GraduationCap className="w-8 h-8 text-white" />
           </motion.div>
-          
+
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -111,7 +111,7 @@ const Login = () => {
           >
             Welcome Back
           </motion.h1>
-          
+
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -213,7 +213,7 @@ const Login = () => {
             >
               Sign up
             </Link>
-          </p>
+          </motion.p>
         </motion.form>
       </motion.div>
     </div>
