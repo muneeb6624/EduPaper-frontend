@@ -5,7 +5,7 @@ import { authApi } from '../features/auth/authApi';
 import { paperApi } from '../features/papers/paperApi';
 import { attemptApi } from '../features/attempts/attemptApi';
 import { resultApi } from '../features/results/resultApi';
-import { userApi } from '../features/users/userApi';
+import { userApi } from '../features/User/userApi';
 import authReducer from '../features/auth/authSlice';
 
 export const store = configureStore({
@@ -37,5 +37,4 @@ export const store = configureStore({
 // Enable listener behavior for the store
 setupListeners(store.dispatch);
 
-export type RootState = ReturnType<typeof store.getState>;
-export type AppDispatch = typeof store.dispatch;
+export default store;
