@@ -9,38 +9,42 @@ import LoadingScreen from './components/ui/Loader'
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import Dashboard from './pages/dashboard/Dashboard';
+import ProtectedRoute from './components/ProtectedRoute';
+import PublicRoute from './components/PublicRoute';
+import ExamInterface from './components/ui/ExamInterface';
+import PaperCreator from './components/ui/PaperCreator';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
   const isAuthenticated = useSelector(selectIsAuthenticated);
   const userRole = useSelector(selectUserRole);
-  
+
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
-  
+
   if (allowedRoles.length > 0 && !allowedRoles.includes(userRole)) {
     return <Navigate to="/unauthorized" replace />;
   }
-  
+
   return children;
 };
 
 // Public Route Component (redirect if authenticated)
 const PublicRoute = ({ children }) => {
   const isAuthenticated = useSelector(selectIsAuthenticated);
-  
+
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
   }
-  
+
   return children;
 };
 
 // Role-based Dashboard Router
 const DashboardRouter = () => {
   const userRole = useSelector(selectUserRole);
-  
+
   // For now, return the same dashboard for all roles
   // You can create separate components later
   return <Dashboard />;
@@ -52,45 +56,45 @@ const AppRoutes = () => {
     <Router>
       <Routes>
         {/* Public Routes */}
-        <Route 
-          path="/login" 
+        <Route
+          path="/login"
           element={
             <PublicRoute>
               <Login />
             </PublicRoute>
-          } 
+          }
         />
-        <Route 
-          path="/register" 
+        <Route
+          path="/register"
           element={
             <PublicRoute>
               <Register />
             </PublicRoute>
-          } 
+          }
         />
-        
+
         {/* Protected Routes */}
-        <Route 
-          path="/dashboard" 
+        <Route
+          path="/dashboard"
           element={
             <ProtectedRoute>
               <DashboardRouter />
             </ProtectedRoute>
-          } 
+          }
         />
-        
-        <Route 
-          path="/home" 
+
+        <Route
+          path="/home"
           element={
             <ProtectedRoute>
               <DashboardRouter />
             </ProtectedRoute>
-          } 
+          }
         />
-        
+
         {/* Student Routes */}
-        <Route 
-          path="/exams" 
+        <Route
+          path="/exams"
           element={
             <ProtectedRoute allowedRoles={['student']}>
               <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
@@ -100,25 +104,20 @@ const AppRoutes = () => {
                 </div>
               </div>
             </ProtectedRoute>
-          } 
+          }
         />
-        
-        <Route 
-          path="/exam/:id" 
+
+        <Route
+          path="/exam/:id"
           element={
             <ProtectedRoute allowedRoles={['student']}>
-              <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
-                <div className="text-center">
-                  <h1 className="text-4xl font-bold mb-4">Exam Interface</h1>
-                  <p className="text-slate-300">Coming soon...</p>
-                </div>
-              </div>
+              <ExamInterface />
             </ProtectedRoute>
-          } 
+          }
         />
-        
-        <Route 
-          path="/results" 
+
+        <Route
+          path="/results"
           element={
             <ProtectedRoute allowedRoles={['student']}>
               <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
@@ -128,12 +127,12 @@ const AppRoutes = () => {
                 </div>
               </div>
             </ProtectedRoute>
-          } 
+          }
         />
-        
+
         {/* Teacher Routes */}
-        <Route 
-          path="/papers" 
+        <Route
+          path="/papers"
           element={
             <ProtectedRoute allowedRoles={['teacher']}>
               <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
@@ -143,25 +142,20 @@ const AppRoutes = () => {
                 </div>
               </div>
             </ProtectedRoute>
-          } 
+          }
         />
-        
-        <Route 
-          path="/papers/create" 
+
+        <Route
+          path="/papers/create"
           element={
             <ProtectedRoute allowedRoles={['teacher']}>
-              <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
-                <div className="text-center">
-                  <h1 className="text-4xl font-bold mb-4">Create Paper</h1>
-                  <p className="text-slate-300">Coming soon...</p>
-                </div>
-              </div>
+              <PaperCreator />
             </ProtectedRoute>
-          } 
+          }
         />
-        
-        <Route 
-          path="/papers/:id/edit" 
+
+        <Route
+          path="/papers/:id/edit"
           element={
             <ProtectedRoute allowedRoles={['teacher']}>
               <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
@@ -171,11 +165,11 @@ const AppRoutes = () => {
                 </div>
               </div>
             </ProtectedRoute>
-          } 
+          }
         />
-        
-        <Route 
-          path="/grading" 
+
+        <Route
+          path="/grading"
           element={
             <ProtectedRoute allowedRoles={['teacher']}>
               <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
@@ -185,12 +179,12 @@ const AppRoutes = () => {
                 </div>
               </div>
             </ProtectedRoute>
-          } 
+          }
         />
-        
+
         {/* Admin Routes */}
-        <Route 
-          path="/admin/users" 
+        <Route
+          path="/admin/users"
           element={
             <ProtectedRoute allowedRoles={['admin']}>
               <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
@@ -200,11 +194,11 @@ const AppRoutes = () => {
                 </div>
               </div>
             </ProtectedRoute>
-          } 
+          }
         />
-        
-        <Route 
-          path="/admin/analytics" 
+
+        <Route
+          path="/admin/analytics"
           element={
             <ProtectedRoute allowedRoles={['admin']}>
               <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
@@ -214,12 +208,12 @@ const AppRoutes = () => {
                 </div>
               </div>
             </ProtectedRoute>
-          } 
+          }
         />
-        
+
         {/* Error Routes */}
-        <Route 
-          path="/unauthorized" 
+        <Route
+          path="/unauthorized"
           element={
             <div className="min-h-screen bg-slate-950 flex items-center justify-center">
               <div className="text-center">
@@ -227,9 +221,9 @@ const AppRoutes = () => {
                 <p className="text-slate-300">You don't have permission to access this page.</p>
               </div>
             </div>
-          } 
+          }
         />
-        
+
         {/* Default redirect */}
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
@@ -241,11 +235,11 @@ const AppRoutes = () => {
 // Main App Component with Loading Screen
 const App = () => {
   const [isLoading, setIsLoading] = useState(true);
-  
+
   const handleLoadingComplete = () => {
     setIsLoading(false);
   };
-  
+
   return (
     <Provider store={store}>
       <div className="App">

@@ -8,7 +8,7 @@ export const selectUserRole = (state) => state.auth.user?.role || null;
 
 // Base query with auth token injection
 const baseQuery = fetchBaseQuery({
-  baseUrl: 'http://localhost:5000/api', // Update with your backend URL
+  baseUrl: '/api', // Update with your backend URL
   prepareHeaders: (headers, { getState }) => {
     const token = getState().auth.token;
     
@@ -16,7 +16,7 @@ const baseQuery = fetchBaseQuery({
       headers.set('authorization', `Bearer ${token}`);
     }
     
-    headers.set('content-type', 'application/json');
+    headers.set('Content-Type', 'application/json');
     return headers;
   },
 });
@@ -47,9 +47,15 @@ export const authApi = createApi({
         body: credentials,
       }),
       transformResponse: (response) => {
+        // Backend returns { token, role, test }
         return {
           token: response.token,
-          user: response.user,
+          role: response.role,
+          user: {
+            role: response.role,
+            name: 'User', // Will be updated after fetching profile
+            email: ''
+          }
         };
       },
     }),
@@ -62,41 +68,32 @@ export const authApi = createApi({
         body: userData,
       }),
       transformResponse: (response) => {
+        // Backend returns { token }
         return {
           token: response.token,
-          user: response.user,
+          role: userData.role,
+          user: {
+            role: userData.role,
+            name: userData.name,
+            email: userData.email
+          }
         };
       },
     }),
     
     // Refresh token mutation
     refreshToken: builder.mutation({
-      query: () => ({
+      query: (token) => ({
         url: '/auth/refresh',
         method: 'POST',
+        body: { token },
       }),
-      transformResponse: (response) => {
-        return {
-          token: response.token,
-          user: response.user,
-        };
-      },
     }),
     
     // Get current user profile
     getProfile: builder.query({
       query: () => '/users/me',
       providesTags: ['Auth'],
-    }),
-    
-    // Update profile
-    updateProfile: builder.mutation({
-      query: (userData) => ({
-        url: '/users/me',
-        method: 'PUT',
-        body: userData,
-      }),
-      invalidatesTags: ['Auth'],
     }),
     
   }),
@@ -107,5 +104,4 @@ export const {
   useRegisterUserMutation,
   useRefreshTokenMutation,
   useGetProfileQuery,
-  useUpdateProfileMutation,
 } = authApi;

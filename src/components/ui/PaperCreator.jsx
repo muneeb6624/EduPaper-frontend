@@ -1,44 +1,56 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Plus, 
-  Trash2, 
-  Save, 
-  Settings, 
-  Clock, 
-  FileText,
+import { useNavigate } from 'react-router-dom';
+import {
+  Plus,
+  Trash2,
+  Save,
   Eye,
-  EyeOff
+  Calendar,
+  Clock,
+  FileText,
+  Users,
+  Settings as SettingsIcon,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
+import { useCreatePaperMutation } from '../../features/papers/paperApi';
 
-const PaperCreator = ({ onSave, onCancel, existingPaper = null }) => {
+const PaperCreator = () => {
+  const navigate = useNavigate();
+  const [createPaper, { isLoading }] = useCreatePaperMutation();
+
   const [paperData, setPaperData] = useState({
-    title: existingPaper?.title || '',
-    subject: existingPaper?.subject || '',
-    duration: existingPaper?.duration || 60,
-    instructions: existingPaper?.instructions || '',
-    questions: existingPaper?.questions || [],
+    title: '',
+    description: '',
+    subject: '',
+    difficulty: 'medium',
+    tags: [],
+    questions: [],
     settings: {
+      duration: 60,
+      totalMarks: 0,
+      passingMarks: 0,
+      maxAttempts: 1,
       shuffleQuestions: false,
-      shuffleOptions: false,
-      showResultsImmediately: true,
-      allowReview: true,
-      ...existingPaper?.settings
+      showResults: true,
+      startTime: '',
+      endTime: ''
     }
   });
 
-  const [showPreview, setShowPreview] = useState(false);
-  const [currentQuestionType, setCurrentQuestionType] = useState('multiple_choice');
+  const [currentSection, setCurrentSection] = useState('basic');
+  const [expandedQuestion, setExpandedQuestion] = useState(null);
 
   const addQuestion = () => {
     const newQuestion = {
       id: Date.now(),
-      type: currentQuestionType,
       question: '',
-      options: currentQuestionType === 'multiple_choice' ? ['', '', '', ''] : [],
+      type: 'mcq',
+      options: ['', '', '', ''],
       correctAnswer: '',
-      points: 1,
+      marks: 1,
       explanation: ''
     };
 
@@ -46,6 +58,8 @@ const PaperCreator = ({ onSave, onCancel, existingPaper = null }) => {
       ...prev,
       questions: [...prev.questions, newQuestion]
     }));
+
+    setExpandedQuestion(newQuestion.id);
   };
 
   const updateQuestion = (questionId, field, value) => {
@@ -55,6 +69,11 @@ const PaperCreator = ({ onSave, onCancel, existingPaper = null }) => {
         q.id === questionId ? { ...q, [field]: value } : q
       )
     }));
+
+    // Update total marks
+    if (field === 'marks') {
+      updateTotalMarks();
+    }
   };
 
   const updateQuestionOption = (questionId, optionIndex, value) => {
@@ -78,361 +97,496 @@ const PaperCreator = ({ onSave, onCancel, existingPaper = null }) => {
       ...prev,
       questions: prev.questions.filter(q => q.id !== questionId)
     }));
+    updateTotalMarks();
   };
 
-  const handleSave = () => {
-    if (!paperData.title.trim()) {
-      alert('Please enter a paper title');
-      return;
-    }
-    if (paperData.questions.length === 0) {
-      alert('Please add at least one question');
-      return;
-    }
-    onSave(paperData);
+  const updateTotalMarks = () => {
+    const total = paperData.questions.reduce((sum, q) => sum + (parseInt(q.marks) || 0), 0);
+    setPaperData(prev => ({
+      ...prev,
+      settings: {
+        ...prev.settings,
+        totalMarks: total
+      }
+    }));
   };
 
-  const QuestionEditor = ({ question, index }) => (
+  const handleSave = async (isDraft = false) => {
+    try {
+      // Validation
+      if (!paperData.title.trim()) {
+        alert('Please enter a paper title');
+        return;
+      }
+
+      if (paperData.questions.length === 0) {
+        alert('Please add at least one question');
+        return;
+      }
+
+      // Prepare data for API
+      const paperToSave = {
+        ...paperData,
+        status: isDraft ? 'draft' : 'active',
+        questions: paperData.questions.map(q => ({
+          question: q.question,
+          type: q.type,
+          options: q.options,
+          correctAnswer: q.correctAnswer,
+          marks: parseInt(q.marks) || 1,
+          explanation: q.explanation
+        })),
+        settings: {
+          ...paperData.settings,
+          totalMarks: paperData.questions.reduce((sum, q) => sum + (parseInt(q.marks) || 0), 0),
+          startTime: paperData.settings.startTime ? new Date(paperData.settings.startTime) : null,
+          endTime: paperData.settings.endTime ? new Date(paperData.settings.endTime) : null,
+        }
+      };
+
+      await createPaper(paperToSave).unwrap();
+      navigate('/papers', { 
+        state: { message: `Paper ${isDraft ? 'saved as draft' : 'created'} successfully!` }
+      });
+    } catch (error) {
+      console.error('Failed to save paper:', error);
+      alert('Failed to save paper. Please try again.');
+    }
+  };
+
+  const renderQuestionForm = (question) => (
     <motion.div
-      className="glass-card p-6 mb-6"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.1 }}
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: 'auto' }}
+      exit={{ opacity: 0, height: 0 }}
+      className="glass-card p-6 mb-4"
     >
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-white">
-          Question {index + 1}
+          Question {paperData.questions.findIndex(q => q.id === question.id) + 1}
         </h3>
         <div className="flex items-center space-x-2">
-          <select
-            value={question.type}
-            onChange={(e) => updateQuestion(question.id, 'type', e.target.value)}
-            className="bg-gray-700 text-white px-3 py-1 rounded-lg text-sm border border-gray-600"
+          <button
+            onClick={() => setExpandedQuestion(
+              expandedQuestion === question.id ? null : question.id
+            )}
+            className="p-2 text-gray-400 hover:text-white transition-colors"
           >
-            <option value="multiple_choice">Multiple Choice</option>
-            <option value="true_false">True/False</option>
-            <option value="short_answer">Short Answer</option>
-          </select>
+            {expandedQuestion === question.id ? <ChevronUp /> : <ChevronDown />}
+          </button>
           <button
             onClick={() => removeQuestion(question.id)}
-            className="p-2 bg-red-600/20 text-red-400 rounded-lg hover:bg-red-600/30 transition-colors"
+            className="p-2 text-red-400 hover:text-red-300 transition-colors"
           >
             <Trash2 className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      <div className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
-            Question Text
-          </label>
-          <textarea
-            value={question.question}
-            onChange={(e) => updateQuestion(question.id, 'question', e.target.value)}
-            placeholder="Enter your question here..."
-            className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
-            rows={3}
-          />
-        </div>
-
-        {question.type === 'multiple_choice' && (
+      {expandedQuestion === question.id && (
+        <div className="space-y-4">
+          {/* Question Text */}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Options
-            </label>
-            <div className="space-y-2">
-              {question.options.map((option, optIndex) => (
-                <div key={optIndex} className="flex items-center space-x-3">
-                  <input
-                    type="radio"
-                    name={`correct-${question.id}`}
-                    checked={question.correctAnswer === option}
-                    onChange={() => updateQuestion(question.id, 'correctAnswer', option)}
-                    className="text-blue-600"
-                  />
-                  <input
-                    type="text"
-                    value={option}
-                    onChange={(e) => updateQuestionOption(question.id, optIndex, e.target.value)}
-                    placeholder={`Option ${optIndex + 1}`}
-                    className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  />
-                </div>
-              ))}
-            </div>
-            <p className="text-xs text-gray-400 mt-1">
-              Select the radio button next to the correct answer
-            </p>
+            <label className="block text-white font-medium mb-2">Question</label>
+            <textarea
+              value={question.question}
+              onChange={(e) => updateQuestion(question.id, 'question', e.target.value)}
+              placeholder="Enter your question..."
+              className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+              rows={3}
+            />
           </div>
-        )}
 
-        {question.type === 'true_false' && (
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Correct Answer
-            </label>
-            <div className="flex space-x-4">
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name={`tf-${question.id}`}
-                  value="true"
-                  checked={question.correctAnswer === 'true'}
-                  onChange={(e) => updateQuestion(question.id, 'correctAnswer', e.target.value)}
-                  className="text-blue-600 mr-2"
-                />
-                True
-              </label>
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name={`tf-${question.id}`}
-                  value="false"
-                  checked={question.correctAnswer === 'false'}
-                  onChange={(e) => updateQuestion(question.id, 'correctAnswer', e.target.value)}
-                  className="text-blue-600 mr-2"
-                />
-                False
-              </label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Question Type */}
+            <div>
+              <label className="block text-white font-medium mb-2">Type</label>
+              <select
+                value={question.type}
+                onChange={(e) => updateQuestion(question.id, 'type', e.target.value)}
+                className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+              >
+                <option value="mcq">Multiple Choice</option>
+                <option value="short_answer">Short Answer</option>
+                <option value="long_answer">Long Answer</option>
+              </select>
+            </div>
+
+            {/* Marks */}
+            <div>
+              <label className="block text-white font-medium mb-2">Marks</label>
+              <input
+                type="number"
+                min="1"
+                value={question.marks}
+                onChange={(e) => updateQuestion(question.id, 'marks', e.target.value)}
+                className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+              />
             </div>
           </div>
-        )}
 
-        <div className="grid grid-cols-2 gap-4">
+          {/* Options (for MCQ) */}
+          {question.type === 'mcq' && (
+            <div>
+              <label className="block text-white font-medium mb-2">Options</label>
+              <div className="space-y-2">
+                {question.options.map((option, index) => (
+                  <div key={index} className="flex items-center space-x-2">
+                    <span className="text-gray-400 font-medium w-8">
+                      {String.fromCharCode(65 + index)}:
+                    </span>
+                    <input
+                      type="text"
+                      value={option}
+                      onChange={(e) => updateQuestionOption(question.id, index, e.target.value)}
+                      placeholder={`Option ${String.fromCharCode(65 + index)}`}
+                      className="flex-1 p-2 bg-gray-700/50 border border-gray-600 rounded text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    />
+                    <input
+                      type="radio"
+                      name={`correct-${question.id}`}
+                      checked={question.correctAnswer === option}
+                      onChange={() => updateQuestion(question.id, 'correctAnswer', option)}
+                      className="text-green-500"
+                    />
+                  </div>
+                ))}
+              </div>
+              <p className="text-sm text-gray-400 mt-2">
+                Select the radio button next to the correct answer
+              </p>
+            </div>
+          )}
+
+          {/* Explanation */}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Points
-            </label>
-            <input
-              type="number"
-              value={question.points}
-              onChange={(e) => updateQuestion(question.id, 'points', parseInt(e.target.value))}
-              min="1"
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+            <label className="block text-white font-medium mb-2">Explanation (Optional)</label>
+            <textarea
+              value={question.explanation}
+              onChange={(e) => updateQuestion(question.id, 'explanation', e.target.value)}
+              placeholder="Explain the correct answer..."
+              className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+              rows={2}
             />
           </div>
         </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
-            Explanation (Optional)
-          </label>
-          <textarea
-            value={question.explanation}
-            onChange={(e) => updateQuestion(question.id, 'explanation', e.target.value)}
-            placeholder="Explain the correct answer..."
-            className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400"
-            rows={2}
-          />
-        </div>
-      </div>
+      )}
     </motion.div>
   );
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
-      <header className="bg-gray-900/95 backdrop-blur-sm border-b border-gray-800 px-6 py-4">
-        <div className="flex items-center justify-between">
+    <div className="min-h-screen bg-slate-950 p-6">
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-white">
-              {existingPaper ? 'Edit Paper' : 'Create New Paper'}
-            </h1>
-            <p className="text-gray-400">Design your examination paper</p>
+            <h1 className="text-3xl font-bold text-white mb-2">Create New Paper</h1>
+            <p className="text-gray-400">Design your exam paper with questions and settings</p>
           </div>
-          <div className="flex items-center space-x-4">
+          <div className="flex space-x-3">
             <motion.button
-              onClick={() => setShowPreview(!showPreview)}
-              className="flex items-center space-x-2 px-4 py-2 bg-blue-600/20 text-blue-400 rounded-lg hover:bg-blue-600/30 transition-colors"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              {showPreview ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              <span>{showPreview ? 'Hide Preview' : 'Preview'}</span>
-            </motion.button>
-            <motion.button
-              onClick={onCancel}
-              className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              Cancel
-            </motion.button>
-            <motion.button
-              onClick={handleSave}
-              className="flex items-center space-x-2 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+              onClick={() => handleSave(true)}
+              disabled={isLoading}
+              className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors flex items-center space-x-2"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
             >
               <Save className="w-4 h-4" />
-              <span>Save Paper</span>
+              <span>Save Draft</span>
+            </motion.button>
+            <motion.button
+              onClick={() => handleSave(false)}
+              disabled={isLoading}
+              className="px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all flex items-center space-x-2"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <FileText className="w-4 h-4" />
+              <span>Publish Paper</span>
             </motion.button>
           </div>
         </div>
-      </header>
 
-      <div className="flex">
-        {/* Main Editor */}
-        <div className={`${showPreview ? 'w-1/2' : 'w-full'} p-6 transition-all duration-300`}>
-          <motion.div
-            className="max-w-4xl mx-auto"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            {/* Paper Settings */}
-            <div className="glass-card p-6 mb-6">
-              <h2 className="text-xl font-semibold text-white mb-4">Paper Details</h2>
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Paper Title
-                  </label>
-                  <input
-                    type="text"
-                    value={paperData.title}
-                    onChange={(e) => setPaperData(prev => ({ ...prev, title: e.target.value }))}
-                    placeholder="Enter paper title"
-                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Subject
-                  </label>
-                  <input
-                    type="text"
-                    value={paperData.subject}
-                    onChange={(e) => setPaperData(prev => ({ ...prev, subject: e.target.value }))}
-                    placeholder="Enter subject"
-                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Duration (minutes)
-                  </label>
-                  <input
-                    type="number"
-                    value={paperData.duration}
-                    onChange={(e) => setPaperData(prev => ({ ...prev, duration: parseInt(e.target.value) }))}
-                    min="1"
-                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  />
-                </div>
-              </div>
-              
-              <div className="mt-4">
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Instructions
-                </label>
-                <textarea
-                  value={paperData.instructions}
-                  onChange={(e) => setPaperData(prev => ({ ...prev, instructions: e.target.value }))}
-                  placeholder="Enter exam instructions..."
-                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  rows={3}
-                />
-              </div>
-            </div>
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          {/* Navigation */}
+          <div className="lg:col-span-1">
+            <div className="glass-card p-4 sticky top-6">
+              <nav className="space-y-2">
+                <button
+                  onClick={() => setCurrentSection('basic')}
+                  className={`w-full flex items-center space-x-3 p-3 rounded-lg text-left transition-all ${
+                    currentSection === 'basic'
+                      ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30'
+                      : 'text-gray-300 hover:text-white hover:bg-gray-800/50'
+                  }`}
+                >
+                  <FileText className="w-4 h-4" />
+                  <span>Basic Info</span>
+                </button>
+                <button
+                  onClick={() => setCurrentSection('questions')}
+                  className={`w-full flex items-center space-x-3 p-3 rounded-lg text-left transition-all ${
+                    currentSection === 'questions'
+                      ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30'
+                      : 'text-gray-300 hover:text-white hover:bg-gray-800/50'
+                  }`}
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Questions ({paperData.questions.length})</span>
+                </button>
+                <button
+                  onClick={() => setCurrentSection('settings')}
+                  className={`w-full flex items-center space-x-3 p-3 rounded-lg text-left transition-all ${
+                    currentSection === 'settings'
+                      ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30'
+                      : 'text-gray-300 hover:text-white hover:bg-gray-800/50'
+                  }`}
+                >
+                  <SettingsIcon className="w-4 h-4" />
+                  <span>Settings</span>
+                </button>
+              </nav>
 
-            {/* Questions Section */}
-            <div className="glass-card p-6 mb-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-white">
-                  Questions ({paperData.questions.length})
-                </h2>
-                <div className="flex items-center space-x-3">
-                  <select
-                    value={currentQuestionType}
-                    onChange={(e) => setCurrentQuestionType(e.target.value)}
-                    className="bg-gray-700 text-white px-3 py-2 rounded-lg border border-gray-600"
-                  >
-                    <option value="multiple_choice">Multiple Choice</option>
-                    <option value="true_false">True/False</option>
-                    <option value="short_answer">Short Answer</option>
-                  </select>
-                  <motion.button
-                    onClick={addQuestion}
-                    className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>Add Question</span>
-                  </motion.button>
-                </div>
-              </div>
-
-              <AnimatePresence>
-                {paperData.questions.map((question, index) => (
-                  <QuestionEditor 
-                    key={question.id} 
-                    question={question} 
-                    index={index} 
-                  />
-                ))}
-              </AnimatePresence>
-
-              {paperData.questions.length === 0 && (
-                <div className="text-center py-12 text-gray-400">
-                  <FileText className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                  <p>No questions added yet. Click "Add Question" to get started.</p>
-                </div>
-              )}
-            </div>
-          </motion.div>
-        </div>
-
-        {/* Preview Panel */}
-        <AnimatePresence>
-          {showPreview && (
-            <motion.div
-              className="w-1/2 bg-gray-900/50 border-l border-gray-800 p-6"
-              initial={{ opacity: 0, x: 300 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 300 }}
-              transition={{ duration: 0.3 }}
-            >
-              <h3 className="text-lg font-semibold text-white mb-4">Preview</h3>
-              <div className="space-y-4">
-                <div className="bg-gray-800/50 rounded-lg p-4">
-                  <h4 className="text-xl font-bold text-white">{paperData.title || 'Untitled Paper'}</h4>
-                  <p className="text-gray-400">{paperData.subject || 'No subject'}</p>
-                  <div className="flex items-center mt-2 text-sm text-gray-400">
-                    <Clock className="w-4 h-4 mr-1" />
-                    {paperData.duration} minutes
+              {/* Stats */}
+              <div className="mt-6 pt-6 border-t border-gray-700">
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Questions:</span>
+                    <span className="text-white">{paperData.questions.length}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Total Marks:</span>
+                    <span className="text-white">{paperData.settings.totalMarks}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Duration:</span>
+                    <span className="text-white">{paperData.settings.duration}m</span>
                   </div>
                 </div>
-                
-                {paperData.instructions && (
-                  <div className="bg-gray-800/50 rounded-lg p-4">
-                    <h5 className="font-semibold text-white mb-2">Instructions:</h5>
-                    <p className="text-gray-300 text-sm">{paperData.instructions}</p>
-                  </div>
-                )}
+              </div>
+            </div>
+          </div>
 
-                <div className="space-y-3 max-h-[60vh] overflow-y-auto">
-                  {paperData.questions.map((question, index) => (
-                    <div key={question.id} className="bg-gray-800/50 rounded-lg p-4">
-                      <p className="text-white font-medium mb-2">
-                        {index + 1}. {question.question || 'Question text...'}
-                      </p>
-                      {question.type === 'multiple_choice' && question.options.length > 0 && (
-                        <div className="ml-4 space-y-1">
-                          {question.options.map((option, optIndex) => (
-                            <div key={optIndex} className="text-gray-300 text-sm">
-                              {String.fromCharCode(65 + optIndex)}. {option || `Option ${optIndex + 1}`}
-                            </div>
-                          ))}
+          {/* Content */}
+          <div className="lg:col-span-3">
+            <AnimatePresence mode="wait">
+              {currentSection === 'basic' && (
+                <motion.div
+                  key="basic"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="space-y-6"
+                >
+                  <div className="glass-card p-8">
+                    <h2 className="text-xl font-bold text-white mb-6">Basic Information</h2>
+                    
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-white font-medium mb-2">Paper Title</label>
+                        <input
+                          type="text"
+                          value={paperData.title}
+                          onChange={(e) => setPaperData(prev => ({ ...prev, title: e.target.value }))}
+                          placeholder="Enter paper title..."
+                          className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-white font-medium mb-2">Description</label>
+                        <textarea
+                          value={paperData.description}
+                          onChange={(e) => setPaperData(prev => ({ ...prev, description: e.target.value }))}
+                          placeholder="Describe this paper..."
+                          className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+                          rows={3}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-white font-medium mb-2">Subject</label>
+                          <input
+                            type="text"
+                            value={paperData.subject}
+                            onChange={(e) => setPaperData(prev => ({ ...prev, subject: e.target.value }))}
+                            placeholder="e.g., Mathematics, Physics"
+                            className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                          />
                         </div>
-                      )}
+
+                        <div>
+                          <label className="block text-white font-medium mb-2">Difficulty</label>
+                          <select
+                            value={paperData.difficulty}
+                            onChange={(e) => setPaperData(prev => ({ ...prev, difficulty: e.target.value }))}
+                            className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+                          >
+                            <option value="easy">Easy</option>
+                            <option value="medium">Medium</option>
+                            <option value="hard">Hard</option>
+                          </select>
+                        </div>
+                      </div>
                     </div>
-                  ))}
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+                  </div>
+                </motion.div>
+              )}
+
+              {currentSection === 'questions' && (
+                <motion.div
+                  key="questions"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="space-y-6"
+                >
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-xl font-bold text-white">Questions</h2>
+                    <motion.button
+                      onClick={addQuestion}
+                      className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Add Question</span>
+                    </motion.button>
+                  </div>
+
+                  {paperData.questions.length === 0 ? (
+                    <div className="glass-card p-12 text-center">
+                      <Plus className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-white mb-2">No Questions Yet</h3>
+                      <p className="text-gray-400 mb-6">Add your first question to get started</p>
+                      <motion.button
+                        onClick={addQuestion}
+                        className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        Add Question
+                      </motion.button>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {paperData.questions.map(question => renderQuestionForm(question))}
+                    </div>
+                  )}
+                </motion.div>
+              )}
+
+              {currentSection === 'settings' && (
+                <motion.div
+                  key="settings"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="space-y-6"
+                >
+                  <div className="glass-card p-8">
+                    <h2 className="text-xl font-bold text-white mb-6">Exam Settings</h2>
+                    
+                    <div className="space-y-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-white font-medium mb-2">Duration (minutes)</label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={paperData.settings.duration}
+                            onChange={(e) => setPaperData(prev => ({
+                              ...prev,
+                              settings: { ...prev.settings, duration: parseInt(e.target.value) || 60 }
+                            }))}
+                            className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-white font-medium mb-2">Max Attempts</label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={paperData.settings.maxAttempts}
+                            onChange={(e) => setPaperData(prev => ({
+                              ...prev,
+                              settings: { ...prev.settings, maxAttempts: parseInt(e.target.value) || 1 }
+                            }))}
+                            className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-white font-medium mb-2">Start Date & Time</label>
+                          <input
+                            type="datetime-local"
+                            value={paperData.settings.startTime}
+                            onChange={(e) => setPaperData(prev => ({
+                              ...prev,
+                              settings: { ...prev.settings, startTime: e.target.value }
+                            }))}
+                            className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-white font-medium mb-2">End Date & Time</label>
+                          <input
+                            type="datetime-local"
+                            value={paperData.settings.endTime}
+                            onChange={(e) => setPaperData(prev => ({
+                              ...prev,
+                              settings: { ...prev.settings, endTime: e.target.value }
+                            }))}
+                            className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <div className="flex items-center space-x-3">
+                          <input
+                            type="checkbox"
+                            id="shuffleQuestions"
+                            checked={paperData.settings.shuffleQuestions}
+                            onChange={(e) => setPaperData(prev => ({
+                              ...prev,
+                              settings: { ...prev.settings, shuffleQuestions: e.target.checked }
+                            }))}
+                            className="text-blue-600 focus:ring-blue-400"
+                          />
+                          <label htmlFor="shuffleQuestions" className="text-white font-medium">
+                            Shuffle Questions
+                          </label>
+                        </div>
+
+                        <div className="flex items-center space-x-3">
+                          <input
+                            type="checkbox"
+                            id="showResults"
+                            checked={paperData.settings.showResults}
+                            onChange={(e) => setPaperData(prev => ({
+                              ...prev,
+                              settings: { ...prev.settings, showResults: e.target.checked }
+                            }))}
+                            className="text-blue-600 focus:ring-blue-400"
+                          />
+                          <label htmlFor="showResults" className="text-white font-medium">
+                            Show Results After Submission
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
       </div>
     </div>
   );

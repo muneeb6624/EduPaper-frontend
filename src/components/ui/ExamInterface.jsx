@@ -1,54 +1,123 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Clock, 
-  ChevronLeft, 
-  ChevronRight, 
-  Flag, 
-  Save,
+import { useParams, useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import {
+  Clock,
+  ChevronLeft,
+  ChevronRight,
   AlertTriangle,
-  CheckCircle
+  CheckCircle,
+  FileText,
+  Send
 } from 'lucide-react';
+import { selectCurrentUser } from '../../features/auth/authSlice';
+import { useGetPaperByIdQuery } from '../../features/papers/paperApi';
+import { useStartAttemptMutation, useSubmitAttemptMutation } from '../../features/attempts/attemptApi';
 
-const ExamInterface = ({ exam, onSubmit, onExit }) => {
+const ExamInterface = () => {
+  const { id: paperId } = useParams();
+  const navigate = useNavigate();
+  const user = useSelector(selectCurrentUser);
+
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState({});
-  const [timeLeft, setTimeLeft] = useState(exam.duration * 60); // Convert to seconds
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [flaggedQuestions, setFlaggedQuestions] = useState(new Set());
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [showSubmitDialog, setShowSubmitDialog] = useState(false);
+  const [attemptId, setAttemptId] = useState(null);
 
-  // Mock questions data
-  const questions = [
-    {
-      id: 1,
-      type: 'multiple_choice',
-      question: 'What is the derivative of x²?',
-      options: ['2x', 'x²', '2', 'x'],
-      correctAnswer: '2x'
-    },
-    {
-      id: 2,
-      type: 'multiple_choice',
-      question: 'What is the integral of 2x?',
-      options: ['x²', 'x² + C', '2', '2x²'],
-      correctAnswer: 'x² + C'
-    }
-  ];
+  const { data: paperResponse, isLoading: paperLoading } = useGetPaperByIdQuery(paperId);
+  const [startAttempt] = useStartAttemptMutation();
+  const [submitAttempt] = useSubmitAttemptMutation();
 
+  const paper = paperResponse?.paper;
+  const questions = paper?.questions || [];
+
+  // Initialize exam
   useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          handleAutoSubmit();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+    if (paper && !attemptId) {
+      initializeExam();
+    }
+  }, [paper]);
 
-    return () => clearInterval(timer);
-  }, []);
+  // Timer
+  useEffect(() => {
+    if (timeLeft > 0) {
+      const timer = setTimeout(() => {
+        setTimeLeft(timeLeft - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    } else if (timeLeft === 0 && attemptId) {
+      handleAutoSubmit();
+    }
+  }, [timeLeft, attemptId]);
+
+  const initializeExam = async () => {
+    try {
+      const result = await startAttempt(paperId).unwrap();
+      setAttemptId(result.attempt._id);
+      setTimeLeft((paper.settings?.duration || 60) * 60); // Convert minutes to seconds
+      
+      // Initialize answers
+      const initialAnswers = {};
+      questions.forEach(q => {
+        initialAnswers[q._id] = '';
+      });
+      setAnswers(initialAnswers);
+    } catch (error) {
+      console.error('Failed to start exam:', error);
+      navigate('/dashboard');
+    }
+  };
+
+  const handleAnswerChange = (questionId, answer) => {
+    setAnswers(prev => ({
+      ...prev,
+      [questionId]: answer
+    }));
+  };
+
+  const handleNext = () => {
+    if (currentQuestion < questions.length - 1) {
+      setCurrentQuestion(currentQuestion + 1);
+    }
+  };
+
+  const handlePrevious = () => {
+    if (currentQuestion > 0) {
+      setCurrentQuestion(currentQuestion - 1);
+    }
+  };
+
+  const handleQuestionJump = (index) => {
+    setCurrentQuestion(index);
+  };
+
+  const handleSubmit = async () => {
+    try {
+      const submissionAnswers = Object.entries(answers).map(([questionId, answer]) => ({
+        questionId,
+        answer
+      }));
+
+      await submitAttempt({
+        paperId,
+        answers: submissionAnswers
+      }).unwrap();
+
+      navigate('/results', { 
+        state: { message: 'Exam submitted successfully!' }
+      });
+    } catch (error) {
+      console.error('Failed to submit exam:', error);
+      alert('Failed to submit exam. Please try again.');
+    }
+  };
+
+  const handleAutoSubmit = () => {
+    handleSubmit();
+  };
 
   const formatTime = (seconds) => {
     const hours = Math.floor(seconds / 3600);
@@ -61,272 +130,317 @@ const ExamInterface = ({ exam, onSubmit, onExit }) => {
     return `${minutes}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleAnswerChange = (questionId, answer) => {
-    setAnswers(prev => ({
-      ...prev,
-      [questionId]: answer
-    }));
+  const getAnsweredCount = () => {
+    return Object.values(answers).filter(answer => answer.trim() !== '').length;
   };
 
-  const handleNext = () => {
-    if (currentQuestion < questions.length - 1) {
-      setCurrentQuestion(prev => prev + 1);
-    }
-  };
+  const renderQuestion = (question) => {
+    const currentAnswer = answers[question._id] || '';
 
-  const handlePrevious = () => {
-    if (currentQuestion > 0) {
-      setCurrentQuestion(prev => prev - 1);
-    }
-  };
-
-  const handleFlagQuestion = () => {
-    const questionId = questions[currentQuestion].id;
-    setFlaggedQuestions(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(questionId)) {
-        newSet.delete(questionId);
-      } else {
-        newSet.add(questionId);
-      }
-      return newSet;
-    });
-  };
-
-  const handleSubmit = async () => {
-    setIsSubmitting(true);
-    try {
-      await onSubmit({ answers, timeSpent: (exam.duration * 60) - timeLeft });
-    } catch (error) {
-      console.error('Submission error:', error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleAutoSubmit = () => {
-    handleSubmit();
-  };
-
-  const getQuestionStatus = (index) => {
-    const questionId = questions[index].id;
-    const isAnswered = answers[questionId];
-    const isFlagged = flaggedQuestions.has(questionId);
-    const isCurrent = index === currentQuestion;
-
-    if (isCurrent) return 'current';
-    if (isAnswered && isFlagged) return 'answered-flagged';
-    if (isAnswered) return 'answered';
-    if (isFlagged) return 'flagged';
-    return 'unanswered';
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'current': return 'bg-blue-600 text-white';
-      case 'answered-flagged': return 'bg-orange-600 text-white';
-      case 'answered': return 'bg-green-600 text-white';
-      case 'flagged': return 'bg-yellow-600 text-white';
-      default: return 'bg-gray-600 text-white hover:bg-gray-500';
-    }
-  };
-
-  const currentQ = questions[currentQuestion];
-  const isTimeWarning = timeLeft < 300; // 5 minutes warning
-
-  return (
-    <div className="min-h-screen bg-slate-950 text-white">
-      {/* Header */}
-      <header className="bg-gray-900/95 backdrop-blur-sm border-b border-gray-800 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-white">{exam.title}</h1>
-            <p className="text-sm text-gray-400">Question {currentQuestion + 1} of {questions.length}</p>
-          </div>
-          
-          <div className="flex items-center space-x-4">
-            {/* Timer */}
-            <div className={`flex items-center space-x-2 px-4 py-2 rounded-lg ${
-              isTimeWarning ? 'bg-red-600/20 text-red-400' : 'bg-blue-600/20 text-blue-400'
-            }`}>
-              <Clock className="w-5 h-5" />
-              <span className="font-mono font-bold">{formatTime(timeLeft)}</span>
-            </div>
-            
-            <button
-              onClick={onExit}
-              className="px-4 py-2 bg-red-600/20 text-red-400 rounded-lg hover:bg-red-600/30 transition-colors"
-            >
-              Exit Exam
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <div className="flex h-[calc(100vh-80px)]">
-        {/* Question Navigation Sidebar */}
-        <div className="w-64 bg-gray-900/50 border-r border-gray-800 p-4">
-          <h3 className="text-lg font-semibold mb-4">Questions</h3>
-          <div className="grid grid-cols-4 gap-2">
-            {questions.map((_, index) => (
-              <motion.button
+    switch (question.type) {
+      case 'mcq':
+        return (
+          <div className="space-y-3">
+            {question.options?.map((option, index) => (
+              <motion.label
                 key={index}
-                onClick={() => setCurrentQuestion(index)}
-                className={`w-10 h-10 rounded-lg text-sm font-medium transition-colors ${
-                  getStatusColor(getQuestionStatus(index))
+                className={`flex items-start space-x-3 p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                  currentAnswer === option
+                    ? 'border-blue-500 bg-blue-500/10'
+                    : 'border-gray-600 bg-gray-700/30 hover:border-gray-500'
                 }`}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+                whileHover={{ scale: 1.01 }}
               >
-                {index + 1}
-              </motion.button>
+                <input
+                  type="radio"
+                  name={`question-${question._id}`}
+                  value={option}
+                  checked={currentAnswer === option}
+                  onChange={(e) => handleAnswerChange(question._id, e.target.value)}
+                  className="mt-1 sr-only"
+                />
+                <div className={`w-4 h-4 rounded-full border-2 mt-1 ${
+                  currentAnswer === option
+                    ? 'bg-blue-500 border-blue-500'
+                    : 'border-gray-400'
+                }`} />
+                <span className="text-white flex-1">{option}</span>
+              </motion.label>
             ))}
           </div>
+        );
+
+      case 'short_answer':
+        return (
+          <textarea
+            value={currentAnswer}
+            onChange={(e) => handleAnswerChange(question._id, e.target.value)}
+            placeholder="Type your answer here..."
+            className="w-full h-32 p-4 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+          />
+        );
+
+      case 'long_answer':
+        return (
+          <textarea
+            value={currentAnswer}
+            onChange={(e) => handleAnswerChange(question._id, e.target.value)}
+            placeholder="Type your detailed answer here..."
+            className="w-full h-48 p-4 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+          />
+        );
+
+      default:
+        return (
+          <div className="text-gray-400">
+            Unsupported question type: {question.type}
+          </div>
+        );
+    }
+  };
+
+  if (paperLoading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading exam...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!paper) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-red-400 mb-4">Exam Not Found</h1>
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Back to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (questions.length === 0) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-yellow-400 mb-4">No Questions Available</h1>
+          <p className="text-gray-400 mb-6">This exam has no questions configured.</p>
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Back to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-950">
+      {/* Header */}
+      <div className="bg-gray-900/80 backdrop-blur-sm border-b border-gray-800 px-6 py-4">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-white">{paper.title}</h1>
+            <p className="text-gray-400 text-sm">{paper.subject}</p>
+          </div>
           
-          {/* Legend */}
-          <div className="mt-6 space-y-2 text-xs">
-            <div className="flex items-center space-x-2">
-              <div className="w-4 h-4 bg-green-600 rounded"></div>
-              <span>Answered</span>
+          <div className="flex items-center space-x-6">
+            {/* Timer */}
+            <div className={`flex items-center space-x-2 px-4 py-2 rounded-lg ${
+              timeLeft < 300 ? 'bg-red-900/50 text-red-300' : 'bg-blue-900/50 text-blue-300'
+            }`}>
+              <Clock className="w-5 h-5" />
+              <span className="font-mono text-lg font-bold">
+                {formatTime(timeLeft)}
+              </span>
             </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-4 h-4 bg-yellow-600 rounded"></div>
-              <span>Flagged</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-4 h-4 bg-gray-600 rounded"></div>
-              <span>Not answered</span>
+
+            {/* Progress */}
+            <div className="text-sm text-gray-400">
+              Question {currentQuestion + 1} of {questions.length}
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Main Content */}
-        <div className="flex-1 flex flex-col">
+      <div className="max-w-7xl mx-auto p-6">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          {/* Question Navigation */}
+          <div className="lg:col-span-1">
+            <div className="glass-card p-6 sticky top-6">
+              <h3 className="text-lg font-semibold text-white mb-4">Questions</h3>
+              <div className="grid grid-cols-5 lg:grid-cols-4 gap-2">
+                {questions.map((_, index) => (
+                  <motion.button
+                    key={index}
+                    onClick={() => handleQuestionJump(index)}
+                    className={`w-10 h-10 rounded-lg border-2 flex items-center justify-center text-sm font-medium transition-all ${
+                      index === currentQuestion
+                        ? 'border-blue-500 bg-blue-500/20 text-blue-400'
+                        : answers[questions[index]._id]?.trim()
+                        ? 'border-green-500 bg-green-500/20 text-green-400'
+                        : 'border-gray-600 bg-gray-700/30 text-gray-400 hover:border-gray-500'
+                    }`}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    {index + 1}
+                  </motion.button>
+                ))}
+              </div>
+              
+              <div className="mt-6 space-y-2 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-400">Answered:</span>
+                  <span className="text-green-400 font-medium">
+                    {getAnsweredCount()}/{questions.length}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-400">Remaining:</span>
+                  <span className="text-orange-400 font-medium">
+                    {questions.length - getAnsweredCount()}
+                  </span>
+                </div>
+              </div>
+
+              <motion.button
+                onClick={() => setShowSubmitDialog(true)}
+                className="w-full mt-6 px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-200 flex items-center justify-center space-x-2"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <Send className="w-4 h-4" />
+                <span>Submit Exam</span>
+              </motion.button>
+            </div>
+          </div>
+
           {/* Question Content */}
-          <div className="flex-1 p-8">
+          <div className="lg:col-span-3">
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentQuestion}
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.3 }}
-                className="max-w-4xl mx-auto"
+                className="glass-card p-8"
               >
-                <div className="glass-card p-8">
-                  <div className="flex items-start justify-between mb-6">
-                    <h2 className="text-2xl font-semibold text-white pr-4">
-                      {currentQ.question}
-                    </h2>
-                    <motion.button
-                      onClick={handleFlagQuestion}
-                      className={`p-2 rounded-lg transition-colors ${
-                        flaggedQuestions.has(currentQ.id)
-                          ? 'bg-yellow-600/20 text-yellow-400'
-                          : 'bg-gray-600/20 text-gray-400 hover:bg-gray-600/30'
-                      }`}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      <Flag className="w-5 h-5" />
-                    </motion.button>
+                <div className="mb-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center space-x-3">
+                      <span className="px-3 py-1 bg-blue-600/20 text-blue-400 rounded-full text-sm font-medium">
+                        Question {currentQuestion + 1}
+                      </span>
+                      <span className="px-3 py-1 bg-purple-600/20 text-purple-400 rounded-full text-sm font-medium">
+                        {questions[currentQuestion]?.marks || 0} marks
+                      </span>
+                    </div>
+                    <div className="text-sm text-gray-400">
+                      {questions[currentQuestion]?.type?.replace('_', ' ').toUpperCase()}
+                    </div>
+                  </div>
+                  
+                  <h2 className="text-xl font-medium text-white leading-relaxed">
+                    {questions[currentQuestion]?.question}
+                  </h2>
+                </div>
+
+                <div className="mb-8">
+                  {renderQuestion(questions[currentQuestion])}
+                </div>
+
+                {/* Navigation */}
+                <div className="flex items-center justify-between">
+                  <motion.button
+                    onClick={handlePrevious}
+                    disabled={currentQuestion === 0}
+                    className="flex items-center space-x-2 px-4 py-2 bg-gray-700/50 text-gray-300 rounded-lg hover:bg-gray-700/70 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    whileHover={{ scale: currentQuestion === 0 ? 1 : 1.02 }}
+                    whileTap={{ scale: currentQuestion === 0 ? 1 : 0.98 }}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    <span>Previous</span>
+                  </motion.button>
+
+                  <div className="flex items-center space-x-2">
+                    {answers[questions[currentQuestion]._id]?.trim() && (
+                      <CheckCircle className="w-5 h-5 text-green-400" />
+                    )}
                   </div>
 
-                  {currentQ.type === 'multiple_choice' && (
-                    <div className="space-y-4">
-                      {currentQ.options.map((option, index) => (
-                        <motion.label
-                          key={index}
-                          className={`flex items-center space-x-4 p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                            answers[currentQ.id] === option
-                              ? 'border-blue-500 bg-blue-600/10'
-                              : 'border-gray-600 hover:border-gray-500 hover:bg-gray-700/30'
-                          }`}
-                          whileHover={{ scale: 1.01 }}
-                          whileTap={{ scale: 0.99 }}
-                        >
-                          <input
-                            type="radio"
-                            name={`question-${currentQ.id}`}
-                            value={option}
-                            checked={answers[currentQ.id] === option}
-                            onChange={(e) => handleAnswerChange(currentQ.id, e.target.value)}
-                            className="sr-only"
-                          />
-                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                            answers[currentQ.id] === option
-                              ? 'border-blue-500 bg-blue-500'
-                              : 'border-gray-500'
-                          }`}>
-                            {answers[currentQ.id] === option && (
-                              <div className="w-2 h-2 bg-white rounded-full"></div>
-                            )}
-                          </div>
-                          <span className="text-white text-lg">{option}</span>
-                        </motion.label>
-                      ))}
-                    </div>
-                  )}
+                  <motion.button
+                    onClick={handleNext}
+                    disabled={currentQuestion === questions.length - 1}
+                    className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    whileHover={{ scale: currentQuestion === questions.length - 1 ? 1 : 1.02 }}
+                    whileTap={{ scale: currentQuestion === questions.length - 1 ? 1 : 0.98 }}
+                  >
+                    <span>Next</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </motion.button>
                 </div>
               </motion.div>
             </AnimatePresence>
           </div>
-
-          {/* Navigation Footer */}
-          <div className="bg-gray-900/50 border-t border-gray-800 p-6">
-            <div className="flex items-center justify-between max-w-4xl mx-auto">
-              <motion.button
-                onClick={handlePrevious}
-                disabled={currentQuestion === 0}
-                className="flex items-center space-x-2 px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                whileHover={{ scale: currentQuestion === 0 ? 1 : 1.05 }}
-                whileTap={{ scale: currentQuestion === 0 ? 1 : 0.95 }}
-              >
-                <ChevronLeft className="w-5 h-5" />
-                <span>Previous</span>
-              </motion.button>
-
-              <div className="flex items-center space-x-4">
-                <motion.button
-                  onClick={() => {/* Save progress */}}
-                  className="flex items-center space-x-2 px-4 py-2 bg-blue-600/20 text-blue-400 rounded-lg hover:bg-blue-600/30 transition-colors"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <Save className="w-4 h-4" />
-                  <span>Save Progress</span>
-                </motion.button>
-
-                <motion.button
-                  onClick={handleSubmit}
-                  disabled={isSubmitting}
-                  className="flex items-center space-x-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
-                  whileHover={{ scale: isSubmitting ? 1 : 1.05 }}
-                  whileTap={{ scale: isSubmitting ? 1 : 0.95 }}
-                >
-                  {isSubmitting ? (
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  ) : (
-                    <CheckCircle className="w-5 h-5" />
-                  )}
-                  <span>{isSubmitting ? 'Submitting...' : 'Submit Exam'}</span>
-                </motion.button>
-              </div>
-
-              <motion.button
-                onClick={handleNext}
-                disabled={currentQuestion === questions.length - 1}
-                className="flex items-center space-x-2 px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                whileHover={{ scale: currentQuestion === questions.length - 1 ? 1 : 1.05 }}
-                whileTap={{ scale: currentQuestion === questions.length - 1 ? 1 : 0.95 }}
-              >
-                <span>Next</span>
-                <ChevronRight className="w-5 h-5" />
-              </motion.button>
-            </div>
-          </div>
         </div>
       </div>
+
+      {/* Submit Dialog */}
+      <AnimatePresence>
+        {showSubmitDialog && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-gray-800 rounded-2xl border border-gray-700 p-8 max-w-md w-full"
+            >
+              <div className="text-center">
+                <AlertTriangle className="w-12 h-12 text-yellow-400 mx-auto mb-4" />
+                <h3 className="text-xl font-bold text-white mb-2">Submit Exam?</h3>
+                <p className="text-gray-400 mb-6">
+                  You have answered {getAnsweredCount()} out of {questions.length} questions.
+                  Once submitted, you cannot make any changes.
+                </p>
+                
+                <div className="flex space-x-4">
+                  <motion.button
+                    onClick={() => setShowSubmitDialog(false)}
+                    className="flex-1 px-4 py-3 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    Continue Exam
+                  </motion.button>
+                  <motion.button
+                    onClick={handleSubmit}
+                    className="flex-1 px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    Submit Now
+                  </motion.button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

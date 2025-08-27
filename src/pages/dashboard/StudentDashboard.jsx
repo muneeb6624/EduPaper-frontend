@@ -15,82 +15,37 @@ import {
   Target
 } from 'lucide-react';
 import { selectCurrentUser } from '../../features/auth/authSlice';
+import { useGetPapersQuery } from '../../features/papers/paperApi';
+import { useGetStudentResultsQuery } from '../../features/results/resultApi';
+import { useNavigate } from 'react-router-dom';
 
 const StudentDashboard = () => {
-  const [activeExams, setActiveExams] = useState([]);
-  const [recentResults, setRecentResults] = useState([]);
-  const [examHistory, setExamHistory] = useState([]);
-  const [loading, setLoading] = useState(true);
-  
   const user = useSelector(selectCurrentUser);
+  const navigate = useNavigate();
+  
+  // API calls
+  const { data: papersResponse, isLoading: papersLoading, error: papersError } = useGetPapersQuery();
+  const { data: resultsResponse, isLoading: resultsLoading, error: resultsError } = useGetStudentResultsQuery(user?._id, {
+    skip: !user?._id
+  });
 
-  useEffect(() => {
-    // Mock data - replace with actual API calls
-    setTimeout(() => {
-      setActiveExams([
-        {
-          id: 1,
-          title: 'Mathematics Midterm',
-          subject: 'Mathematics',
-          duration: 120,
-          questions: 50,
-          deadline: '2024-02-15T10:00:00Z',
-          status: 'available'
-        },
-        {
-          id: 2,
-          title: 'Physics Chapter 5',
-          subject: 'Physics',
-          duration: 90,
-          questions: 30,
-          deadline: '2024-02-18T14:00:00Z',
-          status: 'available'
-        }
-      ]);
+  const papers = papersResponse?.papers || [];
+  const results = resultsResponse || [];
 
-      setRecentResults([
-        {
-          id: 1,
-          examTitle: 'Chemistry Quiz 3',
-          score: 85,
-          totalMarks: 100,
-          submittedAt: '2024-02-10T09:30:00Z',
-          grade: 'A-'
-        },
-        {
-          id: 2,
-          examTitle: 'English Literature',
-          score: 92,
-          totalMarks: 100,
-          submittedAt: '2024-02-08T11:15:00Z',
-          grade: 'A'
-        }
-      ]);
+  // Calculate statistics
+  const availableExams = papers.filter(paper => {
+    const now = new Date();
+    return paper.settings?.startTime && paper.settings?.endTime && 
+           now >= new Date(paper.settings.startTime) && 
+           now <= new Date(paper.settings.endTime);
+  });
 
-      setExamHistory([
-        {
-          id: 1,
-          title: 'Biology Final',
-          score: 88,
-          totalMarks: 100,
-          submittedAt: '2024-01-25T16:00:00Z',
-          duration: 150,
-          grade: 'B+'
-        },
-        {
-          id: 2,
-          title: 'History Midterm',
-          score: 94,
-          totalMarks: 100,
-          submittedAt: '2024-01-20T10:30:00Z',
-          duration: 120,
-          grade: 'A'
-        }
-      ]);
+  const completedExams = results.length;
+  const averageScore = results.length > 0 
+    ? Math.round(results.reduce((sum, result) => sum + result.percentage, 0) / results.length)
+    : 0;
 
-      setLoading(false);
-    }, 1000);
-  }, []);
+  const recentResults = results.slice(0, 3);
 
   const StatCard = ({ title, value, subtitle, icon: Icon, color, trend }) => (
     <motion.div
@@ -120,9 +75,10 @@ const StudentDashboard = () => {
   );
 
   const ExamCard = ({ exam, onStartExam }) => {
-    const timeLeft = new Date(exam.deadline) - new Date();
+    const timeLeft = exam.settings?.endTime ? new Date(exam.settings.endTime) - new Date() : 0;
     const hoursLeft = Math.floor(timeLeft / (1000 * 60 * 60));
-    const isUrgent = hoursLeft < 24;
+    const isUrgent = hoursLeft < 24 && hoursLeft > 0;
+    const isExpired = timeLeft <= 0;
 
     return (
       <motion.div
@@ -142,32 +98,43 @@ const StudentDashboard = () => {
               <span className="text-xs">Urgent</span>
             </div>
           )}
+          {isExpired && (
+            <div className="flex items-center text-red-400">
+              <AlertCircle className="w-4 h-4 mr-1" />
+              <span className="text-xs">Expired</span>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-4 mb-4">
           <div className="flex items-center text-gray-400">
             <Clock className="w-4 h-4 mr-2" />
-            <span className="text-sm">{exam.duration} min</span>
+            <span className="text-sm">{exam.settings?.duration || 'N/A'} min</span>
           </div>
           <div className="flex items-center text-gray-400">
             <FileText className="w-4 h-4 mr-2" />
-            <span className="text-sm">{exam.questions} questions</span>
+            <span className="text-sm">{exam.questions?.length || 0} questions</span>
           </div>
         </div>
 
         <div className="flex items-center justify-between">
           <div className="text-sm text-gray-400">
             <Calendar className="w-4 h-4 inline mr-1" />
-            Due: {new Date(exam.deadline).toLocaleDateString()}
+            Due: {exam.settings?.endTime ? new Date(exam.settings.endTime).toLocaleDateString() : 'N/A'}
           </div>
           <motion.button
             onClick={() => onStartExam(exam)}
-            className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-200"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            disabled={isExpired}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 ${
+              isExpired 
+                ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                : 'bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-700 hover:to-emerald-700'
+            }`}
+            whileHover={{ scale: isExpired ? 1 : 1.05 }}
+            whileTap={{ scale: isExpired ? 1 : 0.95 }}
           >
             <Play className="w-4 h-4" />
-            <span>Start</span>
+            <span>{isExpired ? 'Expired' : 'Start'}</span>
           </motion.button>
         </div>
       </motion.div>
@@ -182,20 +149,20 @@ const StudentDashboard = () => {
     >
       <div className="flex items-center justify-between">
         <div className="flex-1">
-          <h4 className="text-white font-medium">{result.examTitle}</h4>
+          <h4 className="text-white font-medium">{result.paperId?.title || 'Exam'}</h4>
           <p className="text-gray-400 text-sm">
-            {new Date(result.submittedAt).toLocaleDateString()}
+            {new Date(result.createdAt).toLocaleDateString()}
           </p>
         </div>
         <div className="flex items-center space-x-3">
           <div className="text-right">
-            <p className="text-white font-bold">{result.score}/{result.totalMarks}</p>
+            <p className="text-white font-bold">{result.obtainedMarks}/{result.totalMarks}</p>
             <p className={`text-sm font-medium ${
-              result.score >= 90 ? 'text-green-400' : 
-              result.score >= 80 ? 'text-blue-400' : 
-              result.score >= 70 ? 'text-yellow-400' : 'text-red-400'
+              result.percentage >= 90 ? 'text-green-400' : 
+              result.percentage >= 80 ? 'text-blue-400' : 
+              result.percentage >= 70 ? 'text-yellow-400' : 'text-red-400'
             }`}>
-              {result.grade}
+              {result.percentage}%
             </p>
           </div>
           <CheckCircle className="w-5 h-5 text-green-400" />
@@ -205,11 +172,10 @@ const StudentDashboard = () => {
   );
 
   const handleStartExam = (exam) => {
-    console.log('Starting exam:', exam);
-    // Navigate to exam interface
+    navigate(`/exam/${exam._id}`);
   };
 
-  if (loading) {
+  if (papersLoading || resultsLoading) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
         <motion.div
@@ -220,6 +186,17 @@ const StudentDashboard = () => {
           <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-400">Loading your dashboard...</p>
         </motion.div>
+      </div>
+    );
+  }
+
+  if (papersError || resultsError) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-red-400 mb-4">Error Loading Dashboard</h1>
+          <p className="text-gray-400">Please try refreshing the page</p>
+        </div>
       </div>
     );
   }
@@ -235,7 +212,7 @@ const StudentDashboard = () => {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">
-            Welcome back, {user?.name}!
+            Welcome back, {user?.name || 'Student'}!
           </h1>
           <p className="text-gray-400">Track your progress and take your exams</p>
         </div>
@@ -244,30 +221,29 @@ const StudentDashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <StatCard
             title="Available Exams"
-            value={activeExams.length}
+            value={availableExams.length}
             subtitle="Ready to take"
             icon={FileText}
             color="from-blue-600 to-cyan-600"
           />
           <StatCard
             title="Completed Exams"
-            value={examHistory.length + recentResults.length}
+            value={completedExams}
             subtitle="This semester"
             icon={CheckCircle}
             color="from-green-600 to-emerald-600"
           />
           <StatCard
             title="Average Score"
-            value="87%"
-            subtitle="Last 5 exams"
+            value={`${averageScore}%`}
+            subtitle="All time"
             icon={Target}
             color="from-purple-600 to-pink-600"
-            trend="5.2"
           />
           <StatCard
-            title="Study Streak"
-            value="12"
-            subtitle="Days consecutive"
+            title="Total Papers"
+            value={papers.length}
+            subtitle="Assigned to you"
             icon={Award}
             color="from-orange-600 to-red-600"
           />
@@ -279,6 +255,7 @@ const StudentDashboard = () => {
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-white">Available Exams</h2>
               <motion.button
+                onClick={() => navigate('/exams')}
                 className="text-blue-400 hover:text-blue-300 text-sm font-medium"
                 whileHover={{ scale: 1.05 }}
               >
@@ -288,17 +265,29 @@ const StudentDashboard = () => {
             
             <div className="space-y-4">
               <AnimatePresence>
-                {activeExams.map((exam, index) => (
+                {availableExams.length > 0 ? (
+                  availableExams.map((exam, index) => (
+                    <motion.div
+                      key={exam._id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      transition={{ delay: index * 0.1 }}
+                    >
+                      <ExamCard exam={exam} onStartExam={handleStartExam} />
+                    </motion.div>
+                  ))
+                ) : (
                   <motion.div
-                    key={exam.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    transition={{ delay: index * 0.1 }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="glass-card p-8 text-center"
                   >
-                    <ExamCard exam={exam} onStartExam={handleStartExam} />
+                    <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-white mb-2">No Active Exams</h3>
+                    <p className="text-gray-400">Check back later for new assignments</p>
                   </motion.div>
-                ))}
+                )}
               </AnimatePresence>
             </div>
           </div>
@@ -308,6 +297,7 @@ const StudentDashboard = () => {
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-white">Recent Results</h2>
               <motion.button
+                onClick={() => navigate('/results')}
                 className="text-blue-400 hover:text-blue-300 text-sm font-medium"
                 whileHover={{ scale: 1.05 }}
               >
@@ -316,16 +306,27 @@ const StudentDashboard = () => {
             </div>
             
             <div className="space-y-4">
-              {recentResults.map((result, index) => (
+              {recentResults.length > 0 ? (
+                recentResults.map((result, index) => (
+                  <motion.div
+                    key={result._id}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                  >
+                    <ResultCard result={result} />
+                  </motion.div>
+                ))
+              ) : (
                 <motion.div
-                  key={result.id}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.1 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="glass-card p-6 text-center"
                 >
-                  <ResultCard result={result} />
+                  <Award className="w-8 h-8 text-gray-400 mx-auto mb-3" />
+                  <p className="text-gray-400 text-sm">No results yet</p>
                 </motion.div>
-              ))}
+              )}
             </div>
 
             {/* Quick Actions */}
@@ -338,20 +339,22 @@ const StudentDashboard = () => {
               <h3 className="text-lg font-semibold text-white mb-4">Quick Actions</h3>
               <div className="space-y-3">
                 <motion.button
+                  onClick={() => navigate('/exams')}
                   className="w-full flex items-center space-x-3 p-3 bg-gray-700/30 rounded-lg hover:bg-gray-700/50 transition-colors"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
                   <BookOpen className="w-5 h-5 text-blue-400" />
-                  <span className="text-white">Study Materials</span>
+                  <span className="text-white">Browse Exams</span>
                 </motion.button>
                 <motion.button
+                  onClick={() => navigate('/results')}
                   className="w-full flex items-center space-x-3 p-3 bg-gray-700/30 rounded-lg hover:bg-gray-700/50 transition-colors"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
                   <Award className="w-5 h-5 text-green-400" />
-                  <span className="text-white">View Certificates</span>
+                  <span className="text-white">View All Results</span>
                 </motion.button>
               </div>
             </motion.div>
