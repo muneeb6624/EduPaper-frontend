@@ -38,6 +38,12 @@ export const paperApi = createApi({
       providesTags: (result, error, id) => [{ type: 'Paper', id }],
     }),
 
+    // Get single paper by ID (alias for getPaper)
+    getPaperById: builder.query({
+      query: (id) => `/${id}`,
+      providesTags: (result, error, id) => [{ type: 'Paper', id }],
+    }),
+
     // Create paper
     createPaper: builder.mutation({
       query: (paperData) => ({
@@ -78,6 +84,7 @@ export const paperApi = createApi({
 export const {
   useGetPapersQuery,
   useGetPaperQuery,
+  useGetPaperByIdQuery,
   useCreatePaperMutation,
   useUpdatePaperMutation,
   useDeletePaperMutation,
