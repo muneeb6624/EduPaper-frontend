@@ -1,20 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSelector } from 'react-redux';
-import { 
-  FileText, 
-  Users, 
-  BarChart3, 
-  Plus, 
-  Edit3, 
-  Eye, 
-  Clock, 
-  CheckCircle, 
+import {
+  FileText,
+  Users,
+  BarChart3,
+  Plus,
+  Edit3,
+  Eye,
+  Clock,
+  CheckCircle,
   AlertCircle,
   GraduationCap,
   TrendingUp,
   Calendar,
-  Settings
+  Settings,
+  BookOpen // Import BookOpen if it's used elsewhere and not already imported
 } from 'lucide-react';
 import { selectCurrentUser } from '../../features/auth/authSlice';
 import { useGetPapersQuery } from '../../features/papers/paperApi';
@@ -32,8 +33,8 @@ const TeacherDashboard = () => {
   // Calculate statistics
   const activeExams = papers.filter(paper => {
     const now = new Date();
-    return paper.settings?.startTime && paper.settings?.endTime && 
-           now >= new Date(paper.settings.startTime) && 
+    return paper.settings?.startTime && paper.settings?.endTime &&
+           now >= new Date(paper.settings.startTime) &&
            now <= new Date(paper.settings.endTime);
   });
 
@@ -123,7 +124,7 @@ const TeacherDashboard = () => {
         <div className="flex items-center justify-between">
           <div className="text-sm text-gray-400">
             <Calendar className="w-4 h-4 inline mr-1" />
-            {paper.settings?.endTime 
+            {paper.settings?.endTime
               ? `Due: ${new Date(paper.settings.endTime).toLocaleDateString()}`
               : 'No deadline set'
             }
@@ -296,8 +297,8 @@ const TeacherDashboard = () => {
                       exit={{ opacity: 0, y: -20 }}
                       transition={{ delay: index * 0.1 }}
                     >
-                      <PaperCard 
-                        paper={paper} 
+                      <PaperCard
+                        paper={paper}
                         onEdit={handleEditPaper}
                         onView={handleViewPaper}
                         onSettings={handlePaperSettings}

@@ -1,4 +1,3 @@
-
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
 const baseQuery = fetchBaseQuery({
@@ -15,19 +14,21 @@ const baseQuery = fetchBaseQuery({
 
 export const resultApi = createApi({
   reducerPath: 'resultApi',
-  baseQuery,
+  baseQuery: fetchBaseQuery({
+    baseUrl: 'http://localhost:5000/api/results',
+  }),
   tagTypes: ['Result'],
   endpoints: (builder) => ({
     getStudentResults: builder.query({
       query: (studentId) => `/results/student/${studentId}`,
       providesTags: ['Result'],
     }),
-    
+
     getClassResults: builder.query({
       query: (paperId) => `/results/class/${paperId}`,
       providesTags: ['Result'],
     }),
-    
+
     getResultById: builder.query({
       query: (id) => `/results/${id}`,
       providesTags: (result, error, id) => [{ type: 'Result', id }],

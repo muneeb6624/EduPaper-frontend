@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSelector, useDispatch } from 'react-redux';
@@ -25,7 +24,7 @@ import TeacherDashboard from './TeacherDashboard';
 
 const Dashboard = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  
+
   const user = useSelector(selectCurrentUser);
   const userRole = useSelector(selectUserRole);
   const dispatch = useDispatch();

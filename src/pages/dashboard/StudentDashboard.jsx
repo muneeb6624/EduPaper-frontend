@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSelector } from 'react-redux';
@@ -22,7 +21,7 @@ import { useNavigate } from 'react-router-dom';
 const StudentDashboard = () => {
   const user = useSelector(selectCurrentUser);
   const navigate = useNavigate();
-  
+
   // API calls
   const { data: papersResponse, isLoading: papersLoading, error: papersError } = useGetPapersQuery();
   const { data: resultsResponse, isLoading: resultsLoading, error: resultsError } = useGetStudentResultsQuery(user?._id, {
@@ -262,7 +261,7 @@ const StudentDashboard = () => {
                 View all
               </motion.button>
             </div>
-            
+
             <div className="space-y-4">
               <AnimatePresence>
                 {availableExams.length > 0 ? (
@@ -304,7 +303,7 @@ const StudentDashboard = () => {
                 View all
               </motion.button>
             </div>
-            
+
             <div className="space-y-4">
               {recentResults.length > 0 ? (
                 recentResults.map((result, index) => (

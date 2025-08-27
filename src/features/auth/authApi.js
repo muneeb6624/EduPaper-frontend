@@ -8,14 +8,14 @@ export const selectUserRole = (state) => state.auth.user?.role || null;
 
 // Base query with auth token injection
 const baseQuery = fetchBaseQuery({
-  baseUrl: '/api', // Update with your backend URL
+  baseUrl: 'http://localhost:5000/api/auth', // Update with your backend URL
   prepareHeaders: (headers, { getState }) => {
     const token = getState().auth.token;
-    
+
     if (token) {
       headers.set('authorization', `Bearer ${token}`);
     }
-    
+
     headers.set('Content-Type', 'application/json');
     return headers;
   },
@@ -24,12 +24,12 @@ const baseQuery = fetchBaseQuery({
 // Enhanced base query with token refresh logic
 const baseQueryWithReauth = async (args, api, extraOptions) => {
   let result = await baseQuery(args, api, extraOptions);
-  
+
   if (result?.error?.status === 401) {
     // Token expired, logout user
     api.dispatch(logout());
   }
-  
+
   return result;
 };
 
@@ -38,11 +38,11 @@ export const authApi = createApi({
   baseQuery: baseQueryWithReauth,
   tagTypes: ['Auth'],
   endpoints: (builder) => ({
-    
+
     // Login mutation
     loginUser: builder.mutation({
       query: (credentials) => ({
-        url: '/auth/login',
+        url: '/login',
         method: 'POST',
         body: credentials,
       }),
@@ -59,11 +59,11 @@ export const authApi = createApi({
         };
       },
     }),
-    
+
     // Register mutation
     registerUser: builder.mutation({
       query: (userData) => ({
-        url: '/auth/register',
+        url: '/register',
         method: 'POST',
         body: userData,
       }),
@@ -80,22 +80,22 @@ export const authApi = createApi({
         };
       },
     }),
-    
+
     // Refresh token mutation
     refreshToken: builder.mutation({
       query: (token) => ({
-        url: '/auth/refresh',
+        url: '/refresh',
         method: 'POST',
         body: { token },
       }),
     }),
-    
+
     // Get current user profile
     getProfile: builder.query({
       query: () => '/users/me',
       providesTags: ['Auth'],
     }),
-    
+
   }),
 });
 
