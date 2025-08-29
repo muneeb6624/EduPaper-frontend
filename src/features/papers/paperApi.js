@@ -21,9 +21,9 @@ export const paperApi = createApi({
   baseQuery,
   tagTypes: ['Paper'],
   endpoints: (builder) => ({
-    // Get all papers
+    // Get all papers for a user
     getPapers: builder.query({
-      query: (studentId) => `/${studentId}`,
+      query: (userId) => `papers/user/${userId}`,
       providesTags: ['Paper'],
       transformResponse: (response) => {
         return {
@@ -34,31 +34,30 @@ export const paperApi = createApi({
 
     // Get single paper
     getPaper: builder.query({
-      query: (id) => `/${id}`,
+      query: (id) => `papers/${id}`,
       providesTags: (result, error, id) => [{ type: 'Paper', id }],
     }),
 
     // Get single paper by ID (alias for getPaper)
     getPaperById: builder.query({
-      query: (id) => `/${id}`,
+      query: (id) => `papers/${id}`,
       providesTags: (result, error, id) => [{ type: 'Paper', id }],
     }),
 
     // Create paper
     createPaper: builder.mutation({
       query: (paperData) => ({
-        url: '/papers',
+        url: 'papers',
         method: 'POST',
         body: paperData,
       }),
       invalidatesTags: ['Paper'],
     }),
     
-
     // Update paper
     updatePaper: builder.mutation({
       query: ({ id, ...paperData }) => ({
-        url: `/${id}`,
+        url: `papers/${id}`,
         method: 'PUT',
         body: paperData,
       }),
@@ -68,7 +67,7 @@ export const paperApi = createApi({
     // Delete paper
     deletePaper: builder.mutation({
       query: (id) => ({
-        url: `/${id}`,
+        url: `papers/${id}`,
         method: 'DELETE',
       }),
       invalidatesTags: ['Paper'],
@@ -76,8 +75,34 @@ export const paperApi = createApi({
 
     // Get papers created by teacher
     getTeacherPapers: builder.query({
-      query: (teacherId) => `/teacher/${teacherId}`,
+      query: (teacherId) => `papers/teacher/${teacherId}`,
       providesTags: ['Paper'],
+      transformResponse: (response) => {
+        return {
+          papers: response.papers || response || []
+        };
+      },
+    }),
+
+    // Assign paper to students
+    assignPaper: builder.mutation({
+      query: ({ paperId, studentIds }) => ({
+        url: `papers/${paperId}/assign`,
+        method: 'POST',
+        body: { studentIds },
+      }),
+      invalidatesTags: ['Paper'],
+    }),
+
+    // Get assigned papers for student
+    getAssignedPapers: builder.query({
+      query: (studentId) => `papers/assigned/${studentId}`,
+      providesTags: ['Paper'],
+      transformResponse: (response) => {
+        return {
+          papers: response.papers || response || []
+        };
+      },
     }),
   }),
 });
@@ -90,4 +115,6 @@ export const {
   useUpdatePaperMutation,
   useDeletePaperMutation,
   useGetTeacherPapersQuery,
+  useAssignPaperMutation,
+  useGetAssignedPapersQuery,
 } = paperApi;
