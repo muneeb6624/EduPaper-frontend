@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
@@ -15,7 +16,7 @@ const Register = () => {
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'student',
+    role: '',
     institution: '',
   });
   const [errors, setErrors] = useState({});

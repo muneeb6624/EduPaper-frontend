@@ -1,4 +1,3 @@
-
 // src/features/auth/authApi.js
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { logout } from './authSlice';
@@ -38,7 +37,6 @@ export const authApi = createApi({
   baseQuery: baseQueryWithReauth,
   tagTypes: ['Auth'],
   endpoints: (builder) => ({
-
     // Login mutation
     loginUser: builder.mutation({
       query: (credentials) => ({
@@ -53,12 +51,11 @@ export const authApi = createApi({
           user: response.user || {
             role: response.role,
             name: response.name || 'User',
-            email: response.email || ''
-          }
+            email: response.email || '',
+          },
         };
       },
     }),
-
     // Register mutation
     registerUser: builder.mutation({
       query: (userData) => ({
@@ -71,14 +68,13 @@ export const authApi = createApi({
         return {
           token: response.token,
           user: response.user || {
-            role: userData.role,
-            name: userData.name,
-            email: userData.email
-          }
+            role: response.role,
+            name: response.name || 'User',
+            email: response.email || '',
+          },
         };
       },
     }),
-
     // Refresh token mutation
     refreshToken: builder.mutation({
       query: (token) => ({
@@ -87,13 +83,17 @@ export const authApi = createApi({
         body: { token },
       }),
     }),
-
-    // Get current user profile
+    // Get profile query
     getProfile: builder.query({
-      query: () => '/users/me',
-      providesTags: ['Auth'],
+      query: () => ({
+        url: '/profile',
+        method: 'GET',
+      }),
+      transformResponse: (response) => {
+        // Backend returns { user }
+        return response.user;
+      },
     }),
-
   }),
 });
 

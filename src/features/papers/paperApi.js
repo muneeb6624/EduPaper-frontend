@@ -3,12 +3,12 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
 const baseQuery = fetchBaseQuery({
-  baseUrl: 'http://localhost:5000/api/papers',
+  baseUrl: 'http://localhost:5000/api/',
   prepareHeaders: (headers, { getState }) => {
     const token = getState().auth.token;
     
     if (token) {
-      headers.set('authorization', `Bearer ${token}`);
+      headers.set('Authorization', `Bearer ${token}`);
     }
     
     headers.set('Content-Type', 'application/json');
@@ -23,7 +23,7 @@ export const paperApi = createApi({
   endpoints: (builder) => ({
     // Get all papers
     getPapers: builder.query({
-      query: () => '/',
+      query: (studentId) => `/${studentId}`,
       providesTags: ['Paper'],
       transformResponse: (response) => {
         return {
@@ -47,12 +47,13 @@ export const paperApi = createApi({
     // Create paper
     createPaper: builder.mutation({
       query: (paperData) => ({
-        url: '/',
+        url: '/papers',
         method: 'POST',
         body: paperData,
       }),
       invalidatesTags: ['Paper'],
     }),
+    
 
     // Update paper
     updatePaper: builder.mutation({

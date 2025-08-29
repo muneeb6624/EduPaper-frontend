@@ -5,6 +5,7 @@ import { authApi } from '../features/auth/authApi';
 import { paperApi } from '../features/papers/paperApi';
 import { attemptApi } from '../features/attempts/attemptApi';
 import { resultApi } from '../features/results/resultApi';
+import { userApi } from '../features/User/userApi';
 
 // Create the main API slice
 export const api = createApi({
@@ -30,6 +31,8 @@ export const store = configureStore({
     [paperApi.reducerPath]: paperApi.reducer,
     [attemptApi.reducerPath]: attemptApi.reducer,
     [resultApi.reducerPath]: resultApi.reducer,
+    [userApi.reducerPath]: userApi.reducer,
+    user: userApi.reducer, // Add user as a reducer
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
@@ -40,7 +43,8 @@ export const store = configureStore({
       authApi.middleware,
       paperApi.middleware,
       attemptApi.middleware,
-      resultApi.middleware
+      resultApi.middleware,
+      userApi.middleware,
     ),
 });
 

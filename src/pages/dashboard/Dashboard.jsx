@@ -1,29 +1,34 @@
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useSelector, useDispatch } from 'react-redux';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { 
-  Menu, 
-  X, 
-  Home, 
-  FileText, 
-  Users, 
-  BarChart3, 
-  Settings, 
+import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useSelector, useDispatch } from "react-redux";
+import { useNavigate, useLocation } from "react-router-dom";
+import {
+  Menu,
+  X,
+  Home,
+  FileText,
+  Users,
+  BarChart3,
+  Settings,
   LogOut,
   BookOpen,
   GraduationCap,
   Award,
   Clock,
   User,
-  Bell
-} from 'lucide-react';
-import { selectCurrentUser, selectUserRole, logout } from '../../features/auth/authSlice';
-import StudentDashboard from './StudentDashboard';
-import TeacherDashboard from './TeacherDashboard';
+  Bell,
+} from "lucide-react";
+import {
+  selectCurrentUser,
+  selectUserRole,
+  logout,
+} from "../../features/auth/authSlice";
+import StudentDashboard from "./StudentDashboard";
+import TeacherDashboard from "./TeacherDashboard";
 
 const Dashboard = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
 
   const user = useSelector(selectCurrentUser);
   const userRole = useSelector(selectUserRole);
@@ -31,42 +36,101 @@ const Dashboard = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Handle window resize
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 1024;
+      setIsMobile(mobile);
+      if (!mobile) {
+        setSidebarOpen(false); // Close mobile sidebar on desktop
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const handleLogout = () => {
     dispatch(logout());
-    navigate('/login'); 
+    navigate("/login");
   };
 
   // Role-based navigation items
   const getNavigationItems = () => {
     const common = [
-      { id: 'dashboard', label: 'Dashboard', icon: Home, path: '/dashboard' },
+      { id: "dashboard", label: "Dashboard", icon: Home, path: "/dashboard" },
     ];
 
     switch (userRole) {
-      case 'student':
+      case "student":
         return [
           ...common,
-          { id: 'exams', label: 'Available Exams', icon: FileText, path: '/exams' },
-          { id: 'results', label: 'My Results', icon: Award, path: '/results' },
-          { id: 'history', label: 'Exam History', icon: Clock, path: '/history' },
+          {
+            id: "exams",
+            label: "Available Exams",
+            icon: FileText,
+            path: "/exams",
+          },
+          { id: "results", label: "My Results", icon: Award, path: "/results" },
+          {
+            id: "history",
+            label: "Exam History",
+            icon: Clock,
+            path: "/history",
+          },
         ];
 
-      case 'teacher':
+      case "teacher":
         return [
           ...common,
-          { id: 'papers', label: 'My Papers', icon: FileText, path: '/papers' },
-          { id: 'create', label: 'Create Paper', icon: BookOpen, path: '/papers/create' },
-          { id: 'grading', label: 'Grading', icon: GraduationCap, path: '/grading' },
-          { id: 'analytics', label: 'Analytics', icon: BarChart3, path: '/analytics' },
+          { id: "papers", label: "My Papers", icon: FileText, path: "/papers" },
+          {
+            id: "create",
+            label: "Create Paper",
+            icon: BookOpen,
+            path: "/papers/create",
+          },
+          {
+            id: "grading",
+            label: "Grading",
+            icon: GraduationCap,
+            path: "/grading",
+          },
+          {
+            id: "analytics",
+            label: "Analytics",
+            icon: BarChart3,
+            path: "/analytics",
+          },
         ];
 
-      case 'admin':
+      case "admin":
         return [
           ...common,
-          { id: 'users', label: 'User Management', icon: Users, path: '/admin/users' },
-          { id: 'papers', label: 'All Papers', icon: FileText, path: '/admin/papers' },
-          { id: 'analytics', label: 'System Analytics', icon: BarChart3, path: '/admin/analytics' },
-          { id: 'settings', label: 'Settings', icon: Settings, path: '/admin/settings' },
+          {
+            id: "users",
+            label: "User Management",
+            icon: Users,
+            path: "/admin/users",
+          },
+          {
+            id: "papers",
+            label: "All Papers",
+            icon: FileText,
+            path: "/admin/papers",
+          },
+          {
+            id: "analytics",
+            label: "System Analytics",
+            icon: BarChart3,
+            path: "/admin/analytics",
+          },
+          {
+            id: "settings",
+            label: "Settings",
+            icon: Settings,
+            path: "/admin/settings",
+          },
         ];
 
       default:
@@ -78,7 +142,9 @@ const Dashboard = ({ children }) => {
 
   const handleNavigation = (path) => {
     navigate(path);
-    setSidebarOpen(false);
+    if (isMobile) {
+      setSidebarOpen(false);
+    }
   };
 
   const renderDashboardContent = () => {
@@ -89,11 +155,11 @@ const Dashboard = ({ children }) => {
 
     // Otherwise render role-specific dashboard
     switch (userRole) {
-      case 'student':
+      case "student":
         return <StudentDashboard />;
-      case 'teacher':
+      case "teacher":
         return <TeacherDashboard />;
-      case 'admin':
+      case "admin":
         return <AdminDashboardContent />;
       default:
         return <DefaultDashboardContent />;
@@ -113,26 +179,25 @@ const Dashboard = ({ children }) => {
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
-      {/* Sidebar */}
+      {/* Mobile Backdrop */}
       <AnimatePresence>
-        {sidebarOpen && (
+        {sidebarOpen && isMobile && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
             onClick={() => setSidebarOpen(false)}
           />
         )}
       </AnimatePresence>
 
-      <motion.aside
-        initial={false}
-        animate={{
-          x: sidebarOpen ? 0 : -320,
-        }}
-        className={`fixed left-0 top-0 z-50 h-full w-80 bg-gray-900/90 backdrop-blur-md border-r border-gray-800 transform transition-transform duration-300 ease-in-out lg:translate-x-0`}
-      >
+      {/* Sidebar */}
+      <aside className={`fixed left-0 top-0 z-50 h-full w-80 bg-gray-900/90 backdrop-blur-md border-r border-gray-800 transition-transform duration-300 ease-in-out ${
+        isMobile 
+          ? (sidebarOpen ? 'translate-x-0' : '-translate-x-full')
+          : 'translate-x-0'
+      }`}>
         <div className="flex h-full flex-col">
           {/* Logo */}
           <div className="flex h-16 items-center justify-between px-6 border-b border-gray-800">
@@ -142,16 +207,18 @@ const Dashboard = ({ children }) => {
               </div>
               <span className="text-xl font-bold text-white">EduPaper</span>
             </div>
-            <button
-              onClick={() => setSidebarOpen(false)}
-              className="lg:hidden p-2 hover:bg-gray-800 rounded-lg transition-colors"
-            >
-              <X className="w-5 h-5 text-gray-400" />
-            </button>
+            {isMobile && (
+              <button
+                onClick={() => setSidebarOpen(false)}
+                className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-400" />
+              </button>
+            )}
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 px-4 py-6 space-y-2">
+          <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
             {navigationItems.map((item) => {
               const isActive = location.pathname === item.path;
               return (
@@ -160,8 +227,8 @@ const Dashboard = ({ children }) => {
                   onClick={() => handleNavigation(item.path)}
                   className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 text-left ${
                     isActive
-                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg'
-                      : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                      ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg"
+                      : "text-gray-300 hover:bg-gray-800 hover:text-white"
                   }`}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
@@ -181,11 +248,9 @@ const Dashboard = ({ children }) => {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-white truncate">
-                  {user?.name || 'User'}
+                  {user?.name || "User"}
                 </p>
-                <p className="text-xs text-gray-400 capitalize">
-                  {userRole}
-                </p>
+                <p className="text-xs text-gray-400 capitalize">{userRole}</p>
               </div>
             </div>
             <motion.button
@@ -199,21 +264,24 @@ const Dashboard = ({ children }) => {
             </motion.button>
           </div>
         </div>
-      </motion.aside>
+      </aside>
 
       {/* Main Content */}
-      <div className="lg:ml-80">
+      <div className={`transition-all duration-300 ${isMobile ? 'ml-0' : 'ml-80'}`}>
         {/* Header */}
         <header className="h-16 bg-gray-900/80 backdrop-blur-sm border-b border-gray-800 px-6 flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="lg:hidden p-2 hover:bg-gray-800 rounded-lg transition-colors"
-            >
-              <Menu className="w-5 h-5 text-gray-400" />
-            </button>
+            {isMobile && (
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
+              >
+                <Menu className="w-5 h-5 text-gray-400" />
+              </button>
+            )}
             <h1 className="text-xl font-semibold text-white">
-              {navigationItems.find(item => location.pathname === item.path)?.label || 'Dashboard'}
+              {navigationItems.find((item) => location.pathname === item.path)
+                ?.label || "Dashboard"}
             </h1>
           </div>
 
@@ -292,7 +360,9 @@ const DefaultDashboardContent = () => {
     <div className="min-h-screen bg-slate-950 flex items-center justify-center">
       <div className="text-center">
         <h1 className="text-4xl font-bold text-white mb-4">Dashboard</h1>
-        <p className="text-slate-300">Please check your user role configuration</p>
+        <p className="text-slate-300">
+          Please check your user role configuration
+        </p>
       </div>
     </div>
   );
@@ -313,7 +383,9 @@ const StatCard = ({ title, value, subtitle, icon: Icon, color }) => (
         <p className="text-3xl font-bold text-white mt-1">{value}</p>
         <p className="text-gray-500 text-xs mt-1">{subtitle}</p>
       </div>
-      <div className={`w-12 h-12 rounded-xl bg-gradient-to-r ${color} flex items-center justify-center`}>
+      <div
+        className={`w-12 h-12 rounded-xl bg-gradient-to-r ${color} flex items-center justify-center`}
+      >
         <Icon className="w-6 h-6 text-white" />
       </div>
     </div>

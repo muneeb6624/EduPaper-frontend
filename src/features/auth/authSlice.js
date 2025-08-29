@@ -39,8 +39,8 @@ const authSlice = createSlice({
       // Create user object if not provided
       const userData = user || {
         role: role,
-        name: 'User', // Default name, should be updated from profile
-        email: '', // Should be fetched from profile
+        name: user.name || '', // Default name, should be updated from profile
+        email: user.email || '', // Should be fetched from profile
       };
       
       state.user = userData;
