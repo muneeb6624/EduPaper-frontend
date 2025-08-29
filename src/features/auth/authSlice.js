@@ -1,12 +1,11 @@
-
-import { createSlice } from '@reduxjs/toolkit';
+import { createSlice } from "@reduxjs/toolkit";
 
 // Get initial state from localStorage
 const getInitialState = () => {
   try {
-    const token = localStorage.getItem('token');
-    const user = localStorage.getItem('user');
-    
+    const token = localStorage.getItem("token");
+    const user = localStorage.getItem("user");
+
     if (token && user) {
       return {
         user: JSON.parse(user),
@@ -16,11 +15,11 @@ const getInitialState = () => {
       };
     }
   } catch (error) {
-    console.error('Error parsing auth state from localStorage:', error);
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    console.error("Error parsing auth state from localStorage:", error);
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
   }
-  
+
   return {
     user: null,
     token: null,
@@ -30,54 +29,55 @@ const getInitialState = () => {
 };
 
 const authSlice = createSlice({
-  name: 'auth',
+  name: "auth",
   initialState: getInitialState(),
   reducers: {
     setCredentials: (state, action) => {
       const { token, user, role } = action.payload;
-      
+
       // Create user object if not provided
-      const userData = user || {
+      const userData = {
+        name: user.name || "",
+        email: user.email || "",
         role: role,
-        name: user.name || '', // Default name, should be updated from profile
-        email: user.email || '', // Should be fetched from profile
       };
-      
+
       state.user = userData;
       state.token = token;
       state.isAuthenticated = true;
       state.loading = false;
-      
+
       // Store in localStorage
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(userData));
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(userData));
     },
-    
+
     updateUser: (state, action) => {
       if (state.user) {
         state.user = { ...state.user, ...action.payload };
-        localStorage.setItem('user', JSON.stringify(state.user));
+        localStorage.setItem("user", JSON.stringify(state.user));
       }
     },
-    
+
     logout: (state) => {
       state.user = null;
       state.token = null;
       state.isAuthenticated = false;
       state.loading = false;
-      
+
       // Clear localStorage
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
     },
-    
+
     setLoading: (state, action) => {
       state.loading = action.payload;
     },
   },
 });
 
-export const { setCredentials, updateUser, logout, setLoading } = authSlice.actions;
+export const { setCredentials, updateUser, logout, setLoading } =
+  authSlice.actions;
 
 // Selectors
 export const selectCurrentUser = (state) => state.auth.user;
