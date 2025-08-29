@@ -1,44 +1,55 @@
-import React from "react";
-import { motion } from "framer-motion";
-import { useSelector } from "react-redux";
-import { useNavigate } from "react-router-dom";
-import {
+
+import React from 'react';
+import { motion } from 'framer-motion';
+import { useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
+import { 
   BookOpen,
+  Clock, 
+  TrendingUp, 
   Award,
-  Clock,
-  Target,
-  TrendingUp,
-  Calendar,
+  Eye,
+  Play,
   CheckCircle,
   AlertCircle,
-} from "lucide-react";
-import { selectCurrentUser } from "../../features/auth/authSlice";
-import { useGetPapersQuery } from "../../features/papers/paperApi";
-import { useGetStudentResultsQuery } from "../../features/results/resultApi";
+  Calendar,
+  BarChart3
+} from 'lucide-react';
+import { selectCurrentUser } from '../../features/auth/authSlice';
+import { useGetAssignedPapersQuery } from '../../features/papers/paperApi';
+import { useGetStudentAttemptsQuery } from '../../features/attempts/attemptApi';
 
 const StudentDashboard = () => {
   const user = useSelector(selectCurrentUser);
   const navigate = useNavigate();
 
-  // API calls with error handling
-  const {
-    data: papersResponse,
-    isLoading: papersLoading,
-    error: papersError,
-  } = useGetPapersQuery(user?._id, {
-    skip: !user?._id, // Skip query if no user ID
+  // API calls with proper error handling
+  const { 
+    data: papersResponse, 
+    isLoading: papersLoading, 
+    error: papersError 
+  } = useGetAssignedPapersQuery(user?._id, {
+    skip: !user?._id,
   });
 
   const {
-    data: resultsResponse,
-    isLoading: resultsLoading,
-    error: resultsError,
-  } = useGetStudentResultsQuery(user?._id, {
-    skip: !user?._id, // Skip query if no user ID
+    data: attemptsData,
+    isLoading: attemptsLoading,
+    error: attemptsError,
+  } = useGetStudentAttemptsQuery(user?._id, {
+    skip: !user?._id,
   });
+
+  const handleStartExam = (paper) => {
+    navigate(`/exam/${paper._id}`);
+  };
+
+  const handleViewResult = (attempt) => {
+    navigate(`/results/${attempt._id}`);
+  };
 
   // Handle loading state
-  if (papersLoading || resultsLoading) {
+  if (papersLoading || attemptsLoading) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
         <motion.div
@@ -54,7 +65,7 @@ const StudentDashboard = () => {
   }
 
   // Handle API errors
-  if (papersError || resultsError) {
+  if (papersError || attemptsError) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
         <motion.div
@@ -80,40 +91,36 @@ const StudentDashboard = () => {
     );
   }
 
-  // Debug: Log API responses and errors
-  console.log('User:', user);
-  console.log('Papers Response:', papersResponse);
-  console.log('Papers Error:', papersError);
-  console.log('Results Response:', resultsResponse);
-  console.log('Results Error:', resultsError);
+  // Extract data from API responses
+  const assignedPapers = papersResponse?.papers || [];
+  const attempts = attemptsData || [];
 
-  // Extract data from API responses (handle empty/null responses)
-  const papers = papersResponse?.papers || [];
-  const results = Array.isArray(resultsResponse) ? resultsResponse : (resultsResponse?.results || []);
-
-  // Calculate statistics
-  const availableExams = Array.isArray(papers) ? papers.filter((paper) => {
+  // Filter papers by status
+  const availableExams = assignedPapers.filter(paper => {
     const now = new Date();
-    return (
-      paper.settings?.startTime &&
-      paper.settings?.endTime &&
-      now >= new Date(paper.settings.startTime) &&
-      now <= new Date(paper.settings.endTime)
-    );
-  }) : [];
+    const startTime = new Date(paper.settings?.startTime);
+    const endTime = new Date(paper.settings?.endTime);
+    
+    return paper.status === 'active' && 
+           now >= startTime && 
+           now <= endTime &&
+           !attempts.some(attempt => attempt.paperId === paper._id && attempt.status === 'completed');
+  });
 
-  const completedExams = Array.isArray(results) ? results.length : 0;
-  const averageScore = Array.isArray(results) && results.length > 0
-    ? Math.round(
-        results.reduce((sum, result) => sum + (result.percentage || 0), 0) /
-          results.length
-      )
+  const upcomingExams = assignedPapers.filter(paper => {
+    const now = new Date();
+    const startTime = new Date(paper.settings?.startTime);
+    
+    return paper.status === 'active' && now < startTime;
+  });
+
+  const completedAttempts = attempts.filter(attempt => attempt.status === 'completed');
+  const averageScore = completedAttempts.length > 0 
+    ? (completedAttempts.reduce((sum, attempt) => sum + (attempt.scoring?.percentage || 0), 0) / completedAttempts.length).toFixed(1)
     : 0;
 
-  const recentResults = Array.isArray(results) ? results.slice(0, 3) : [];
-
   return (
-    <div className="min-h-screen bg-slate-950 p-6">
+    <div className="min-h-screen bg-slate-950 p-4 sm:p-6">
       <motion.div
         className="max-w-7xl mx-auto"
         initial={{ opacity: 0, y: 20 }}
@@ -122,16 +129,14 @@ const StudentDashboard = () => {
       >
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">
-            Welcome back, {user?.name || "Student"}!
+          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">
+            Welcome back, {user?.name || 'Student'}!
           </h1>
-          <p className="text-gray-400">
-            Track your progress and take your exams
-          </p>
+          <p className="text-gray-400">Track your progress and take your exams</p>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
           <StatCard
             title="Available Exams"
             value={availableExams.length}
@@ -140,9 +145,16 @@ const StudentDashboard = () => {
             color="from-blue-600 to-cyan-600"
           />
           <StatCard
+            title="Upcoming Exams"
+            value={upcomingExams.length}
+            subtitle="Scheduled"
+            icon={Clock}
+            color="from-orange-600 to-red-600"
+          />
+          <StatCard
             title="Completed"
-            value={completedExams}
-            subtitle="Exams finished"
+            value={completedAttempts.length}
+            subtitle="Exams taken"
             icon={CheckCircle}
             color="from-green-600 to-emerald-600"
           />
@@ -150,35 +162,22 @@ const StudentDashboard = () => {
             title="Average Score"
             value={`${averageScore}%`}
             subtitle="Overall performance"
-            icon={Target}
+            icon={Award}
             color="from-purple-600 to-pink-600"
-          />
-          <StatCard
-            title="This Month"
-            value={
-              Array.isArray(results) ? results.filter(
-                (r) =>
-                  r.submittedAt && new Date(r.submittedAt) >
-                  new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-              ).length : 0
-            }
-            subtitle="Exams taken"
-            icon={TrendingUp}
-            color="from-orange-600 to-red-600"
           />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
           {/* Available Exams */}
           <div className="lg:col-span-2">
             <motion.div
-              className="glass-card p-6"
+              className="glass-card p-4 sm:p-6"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.2 }}
             >
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-white">
+                <h2 className="text-lg sm:text-xl font-semibold text-white">
                   Available Exams
                 </h2>
                 <motion.button
@@ -192,42 +191,50 @@ const StudentDashboard = () => {
 
               <div className="space-y-4">
                 {availableExams.length > 0 ? (
-                  availableExams.slice(0, 3).map((exam) => (
+                  availableExams.slice(0, 4).map((paper) => (
                     <motion.div
-                      key={exam._id}
+                      key={paper._id}
                       className="p-4 bg-gray-700/30 rounded-lg border border-gray-600/30 hover:border-gray-500/50 transition-all duration-200"
-                      whileHover={{ scale: 1.02 }}
+                      whileHover={{ scale: 1.01 }}
                     >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="font-medium text-white mb-1">
-                            {exam.title}
-                          </h3>
-                          <p className="text-gray-400 text-sm">{exam.subject}</p>
-                          <div className="flex items-center mt-2 text-xs text-gray-500">
-                            <Clock className="w-3 h-3 mr-1" />
-                            {exam.settings?.duration || 60} minutes
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-3 mb-2">
+                            <h3 className="font-medium text-white truncate">{paper.title || 'Untitled Exam'}</h3>
+                            <span className="px-2 py-1 text-xs rounded-full bg-green-600/20 text-green-400 self-start">
+                              Available
+                            </span>
+                          </div>
+                          <p className="text-gray-400 text-sm mb-2 truncate">{paper.subject || 'No subject'}</p>
+                          <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-4 text-xs text-gray-500">
+                            <span>{(paper.questions && paper.questions.length) || 0} questions</span>
+                            <span>{paper.settings?.duration || 0} minutes</span>
+                            <span>{paper.settings?.totalMarks || 0} marks</span>
+                            {paper.settings?.endTime && (
+                              <span>Ends {new Date(paper.settings.endTime).toLocaleDateString()}</span>
+                            )}
                           </div>
                         </div>
-                        <motion.button
-                          onClick={() => navigate(`/exam/${exam._id}`)}
-                          className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                        >
-                          Start
-                        </motion.button>
+                        <div className="flex items-center space-x-2 flex-shrink-0">
+                          <motion.button
+                            onClick={() => handleStartExam(paper)}
+                            className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-200"
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                          >
+                            <Play className="w-4 h-4" />
+                            <span className="hidden sm:inline">Start</span>
+                          </motion.button>
+                        </div>
                       </div>
                     </motion.div>
                   ))
                 ) : (
                   <div className="text-center py-8">
-                    <AlertCircle className="w-12 h-12 text-gray-500 mx-auto mb-3" />
-                    <p className="text-gray-400 mb-2">
-                      No exams available at the moment
-                    </p>
+                    <BookOpen className="w-12 h-12 text-gray-500 mx-auto mb-3" />
+                    <p className="text-gray-400 mb-2">No exams available</p>
                     <p className="text-gray-500 text-sm">
-                      Check back later for new exams
+                      Check back later for new assignments
                     </p>
                   </div>
                 )}
@@ -235,91 +242,25 @@ const StudentDashboard = () => {
             </motion.div>
           </div>
 
-          {/* Recent Results & Quick Actions */}
+          {/* Quick Actions & Upcoming */}
           <div className="space-y-6">
-            {/* Recent Results */}
+            {/* Quick Actions */}
             <motion.div
-              className="glass-card p-6"
+              className="glass-card p-4 sm:p-6"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.3 }}
             >
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-white">
-                  Recent Results
-                </h3>
-                <motion.button
-                  onClick={() => navigate("/results")}
-                  className="text-blue-400 hover:text-blue-300 text-sm font-medium"
-                  whileHover={{ scale: 1.05 }}
-                >
-                  View All
-                </motion.button>
-              </div>
-
-              <div className="space-y-3">
-                {recentResults.length > 0 ? (
-                  recentResults.map((result) => (
-                    <div
-                      key={result._id}
-                      className="flex items-center justify-between py-2"
-                    >
-                      <div>
-                        <p className="text-white text-sm font-medium">
-                          {result.paperTitle || 'Unknown Paper'}
-                        </p>
-                        <p className="text-gray-400 text-xs">
-                          {result.submittedAt 
-                            ? new Date(result.submittedAt).toLocaleDateString()
-                            : 'Unknown date'
-                          }
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p
-                          className={`text-sm font-bold ${
-                            (result.percentage || 0) >= 80
-                              ? "text-green-400"
-                              : (result.percentage || 0) >= 60
-                              ? "text-yellow-400"
-                              : "text-red-400"
-                          }`}
-                        >
-                          {result.percentage || 0}%
-                        </p>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-4">
-                    <p className="text-gray-400 text-sm mb-1">No results yet</p>
-                    <p className="text-gray-500 text-xs">
-                      Complete an exam to see your results
-                    </p>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-
-            {/* Quick Actions */}
-            <motion.div
-              className="glass-card p-6"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-            >
-              <h3 className="text-lg font-semibold text-white mb-4">
-                Quick Actions
-              </h3>
+              <h3 className="text-base sm:text-lg font-semibold text-white mb-4">Quick Actions</h3>
               <div className="space-y-3">
                 <motion.button
                   onClick={() => navigate("/exams")}
-                  className="w-full flex items-center space-x-3 p-3 bg-gray-700/30 rounded-lg hover:bg-gray-700/50 transition-colors"
+                  className="w-full flex items-center space-x-3 p-3 bg-blue-600/20 text-blue-400 rounded-lg hover:bg-blue-600/30 transition-colors"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  <BookOpen className="w-5 h-5 text-blue-400" />
-                  <span className="text-white">Browse Exams</span>
+                  <BookOpen className="w-5 h-5 flex-shrink-0" />
+                  <span>Browse Exams</span>
                 </motion.button>
                 <motion.button
                   onClick={() => navigate("/results")}
@@ -327,8 +268,8 @@ const StudentDashboard = () => {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  <Award className="w-5 h-5 text-green-400" />
-                  <span className="text-white">View All Results</span>
+                  <Award className="w-5 h-5 text-purple-400 flex-shrink-0" />
+                  <span className="text-white">View Results</span>
                 </motion.button>
                 <motion.button
                   onClick={() => navigate("/history")}
@@ -336,9 +277,122 @@ const StudentDashboard = () => {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  <Clock className="w-5 h-5 text-purple-400" />
+                  <Clock className="w-5 h-5 text-green-400 flex-shrink-0" />
                   <span className="text-white">Exam History</span>
                 </motion.button>
+              </div>
+            </motion.div>
+
+            {/* Upcoming Exams */}
+            <motion.div
+              className="glass-card p-4 sm:p-6"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-base sm:text-lg font-semibold text-white">Upcoming Exams</h3>
+                {upcomingExams.length > 3 && (
+                  <motion.button
+                    onClick={() => navigate('/exams')}
+                    className="text-blue-400 hover:text-blue-300 text-sm font-medium"
+                    whileHover={{ scale: 1.05 }}
+                  >
+                    View All
+                  </motion.button>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                {upcomingExams.length > 0 ? (
+                  upcomingExams.slice(0, 3).map((exam) => (
+                    <div key={exam._id} className="p-3 bg-orange-600/10 rounded-lg border border-orange-600/20">
+                      <div className="flex items-center justify-between">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-white text-sm font-medium truncate">{exam.title || 'Untitled Exam'}</p>
+                          <p className="text-orange-400 text-xs">
+                            Starts {exam.settings?.startTime ? new Date(exam.settings.startTime).toLocaleDateString() : 'TBD'}
+                          </p>
+                          <p className="text-gray-400 text-xs mt-1">
+                            {exam.settings?.duration || 'No duration set'} minutes
+                          </p>
+                        </div>
+                        <div className="flex-shrink-0 ml-2">
+                          <Calendar className="w-4 h-4 text-orange-400" />
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-4">
+                    <Calendar className="w-8 h-8 text-gray-500 mx-auto mb-2" />
+                    <p className="text-gray-400 text-sm mb-1">No upcoming exams</p>
+                    <p className="text-gray-500 text-xs">
+                      All caught up for now
+                    </p>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+
+            {/* Recent Results */}
+            <motion.div
+              className="glass-card p-4 sm:p-6"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-base sm:text-lg font-semibold text-white">Recent Results</h3>
+                {completedAttempts.length > 3 && (
+                  <motion.button
+                    onClick={() => navigate('/results')}
+                    className="text-blue-400 hover:text-blue-300 text-sm font-medium"
+                    whileHover={{ scale: 1.05 }}
+                  >
+                    View All
+                  </motion.button>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                {completedAttempts.length > 0 ? (
+                  completedAttempts.slice(0, 3).map((attempt) => (
+                    <div key={attempt._id} className="p-3 bg-gray-700/20 rounded-lg border border-gray-600/30">
+                      <div className="flex items-center justify-between">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-white text-sm font-medium truncate">
+                            {attempt.paperTitle || 'Exam Result'}
+                          </p>
+                          <p className="text-gray-400 text-xs">
+                            {attempt.submittedAt ? new Date(attempt.submittedAt).toLocaleDateString() : 'Recently'}
+                          </p>
+                          <p className={`text-xs mt-1 ${
+                            (attempt.scoring?.percentage || 0) >= 50 ? 'text-green-400' : 'text-red-400'
+                          }`}>
+                            Score: {attempt.scoring?.percentage || 0}%
+                          </p>
+                        </div>
+                        <motion.button
+                          onClick={() => handleViewResult(attempt)}
+                          className="p-2 text-blue-400 hover:text-blue-300 hover:bg-blue-600/10 rounded-lg transition-colors flex-shrink-0"
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                        >
+                          <Eye className="w-4 h-4" />
+                        </motion.button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-4">
+                    <BarChart3 className="w-8 h-8 text-gray-500 mx-auto mb-2" />
+                    <p className="text-gray-400 text-sm mb-1">No results yet</p>
+                    <p className="text-gray-500 text-xs">
+                      Take an exam to see your results
+                    </p>
+                  </div>
+                )}
               </div>
             </motion.div>
           </div>
@@ -351,22 +405,20 @@ const StudentDashboard = () => {
 // Stat Card Component
 const StatCard = ({ title, value, subtitle, icon: Icon, color }) => (
   <motion.div
-    className="glass-card p-6"
+    className="glass-card p-4 sm:p-6"
     whileHover={{ scale: 1.02, y: -2 }}
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ duration: 0.5 }}
   >
     <div className="flex items-center justify-between">
-      <div>
-        <p className="text-gray-400 text-sm font-medium">{title}</p>
-        <p className="text-3xl font-bold text-white mt-1">{value}</p>
-        <p className="text-gray-500 text-xs mt-1">{subtitle}</p>
+      <div className="min-w-0 flex-1">
+        <p className="text-gray-400 text-xs sm:text-sm font-medium truncate">{title}</p>
+        <p className="text-2xl sm:text-3xl font-bold text-white mt-1">{value}</p>
+        <p className="text-gray-500 text-xs mt-1 truncate">{subtitle}</p>
       </div>
-      <div
-        className={`w-12 h-12 rounded-xl bg-gradient-to-r ${color} flex items-center justify-center`}
-      >
-        <Icon className="w-6 h-6 text-white" />
+      <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-r ${color} flex items-center justify-center flex-shrink-0 ml-3`}>
+        <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
       </div>
     </div>
   </motion.div>

@@ -23,18 +23,17 @@ export const attemptApi = createApi({
   endpoints: (builder) => ({
     // Start attempt
     startAttempt: builder.mutation({
-      query: (attemptData) => ({
-        url: '/start',
+      query: (paperId) => ({
+        url: `/start/${paperId}`,
         method: 'POST',
-        body: attemptData,
       }),
       invalidatesTags: ['Attempt'],
     }),
 
     // Submit attempt
     submitAttempt: builder.mutation({
-      query: ({ attemptId, answers }) => ({
-        url: `/${attemptId}/submit`,
+      query: ({ paperId, answers }) => ({
+        url: `/${paperId}/submit`,
         method: 'POST',
         body: { answers },
       }),
@@ -45,18 +44,34 @@ export const attemptApi = createApi({
     getStudentAttempts: builder.query({
       query: (studentId) => `/student/${studentId}`,
       providesTags: ['Attempt'],
+      transformResponse: (response) => {
+        return response.attempts || response || [];
+      },
     }),
 
-    // Get paper attempts
+    // Get paper attempts (for teachers)
     getPaperAttempts: builder.query({
       query: (paperId) => `/paper/${paperId}`,
       providesTags: ['Attempt'],
+      transformResponse: (response) => {
+        return response.attempts || response || [];
+      },
     }),
 
     // Get single attempt
     getAttempt: builder.query({
       query: (id) => `/${id}`,
       providesTags: (result, error, id) => [{ type: 'Attempt', id }],
+    }),
+
+    // Grade attempt (for teachers)
+    gradeAttempt: builder.mutation({
+      query: ({ attemptId, gradedAnswers }) => ({
+        url: `/${attemptId}/grade`,
+        method: 'PUT',
+        body: { gradedAnswers },
+      }),
+      invalidatesTags: ['Attempt'],
     }),
   }),
 });
@@ -67,4 +82,5 @@ export const {
   useGetStudentAttemptsQuery,
   useGetPaperAttemptsQuery,
   useGetAttemptQuery,
+  useGradeAttemptMutation,
 } = attemptApi;
