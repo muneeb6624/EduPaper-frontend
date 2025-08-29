@@ -34,7 +34,7 @@ const StudentDashboard = () => {
     data: attemptsData,
     isLoading: attemptsLoading,
     error: attemptsError,
-  } = useGetStudentAttemptsQuery();
+  } = useGetStudentAttemptsQuery(user?.id);
 
   const handleStartExam = (paper) => {
     navigate(`/exam/${paper._id}`);

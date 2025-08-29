@@ -45,7 +45,7 @@ export const attemptApi = createApi({
       query: (studentId) => `/results/student/${studentId}`,
       providesTags: ['Attempt'],
       transformResponse: (response) => {
-        return response.attempts || response || [];
+        return response || [];
       },
     }),
 
