@@ -50,9 +50,17 @@ const Login = () => {
 
     try {
       const res = await loginUser(formData).unwrap();
-      dispatch(setCredentials(res));
-      // Always redirect to dashboard - it will show role-specific content
-        navigate('/dashboard');
+      console.log('Login response:', res); // Debug log
+      
+      // Ensure we have the required data
+      const credentialsData = {
+        token: res.token,
+        user: res.user || res,
+        role: res.user?.role || res.role || 'student'
+      };
+      
+      dispatch(setCredentials(credentialsData));
+      navigate('/dashboard');
     } catch (err) {
       console.error('Login error:', err);
       setShowError(true);

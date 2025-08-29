@@ -36,12 +36,21 @@ const authSlice = createSlice({
     setCredentials: (state, action) => {
       const { token, user, role } = action.payload;
       
-      // Create user object if not provided
-      const userData = user || {
-        role: role,
-        name: user.name || '', // Default name, should be updated from profile
-        email: user.email || '', // Should be fetched from profile
-      };
+      // Handle different response formats
+      let userData;
+      if (user && typeof user === 'object') {
+        userData = {
+          ...user,
+          role: user.role || role || 'student', // Fallback to role parameter or student
+        };
+      } else {
+        userData = {
+          role: role || 'student',
+          name: user?.name || 'User',
+          email: user?.email || '',
+          _id: user?._id || '',
+        };
+      }
       
       state.user = userData;
       state.token = token;

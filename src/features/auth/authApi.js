@@ -59,19 +59,24 @@ export const authApi = createApi({
     // Register mutation
     registerUser: builder.mutation({
       query: (userData) => ({
-        url: '/register',
+        url: 'auth/register',
         method: 'POST',
         body: userData,
       }),
       transformResponse: (response) => {
-        // Backend returns { success, token, user }
+        // Handle different backend response formats
+        if (response.user) {
+          return {
+            token: response.token,
+            user: response.user,
+            role: response.user.role
+          };
+        }
+        // Fallback for direct response
         return {
           token: response.token,
-          user: response.user || {
-            role: response.role,
-            name: response.name || 'User',
-            email: response.email || '',
-          },
+          user: response,
+          role: response.role
         };
       },
     }),

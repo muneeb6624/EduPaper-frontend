@@ -27,7 +27,7 @@ const Register = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    
+
     // Clear error when user starts typing
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
@@ -62,10 +62,17 @@ const Register = () => {
     if (!validateForm()) return;
 
     try {
-      const { confirmPassword, ...userData } = formData;
-      const res = await registerUser(userData).unwrap();
-      
-      dispatch(setCredentials(res));
+      const res = await registerUser(formData).unwrap();
+      console.log('Register response:', res); // Debug log
+
+      // Ensure we have the required data
+      const credentialsData = {
+        token: res.token,
+        user: res.user || res,
+        role: res.user?.role || res.role || formData.role || 'student'
+      };
+
+      dispatch(setCredentials(credentialsData));
       navigate('/dashboard');
     } catch (err) {
       console.error('Registration error:', err);
@@ -116,7 +123,7 @@ const Register = () => {
           >
             <GraduationCap className="w-8 h-8 text-white" />
           </motion.div>
-          
+
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -125,7 +132,7 @@ const Register = () => {
           >
             Join EduPaper
           </motion.h1>
-          
+
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

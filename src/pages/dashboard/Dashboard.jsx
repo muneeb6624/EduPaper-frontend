@@ -148,6 +148,10 @@ const Dashboard = ({ children }) => {
   };
 
   const renderDashboardContent = () => {
+    // Debug logging
+    console.log('Dashboard - User:', user);
+    console.log('Dashboard - User Role:', userRole);
+    
     // If we have children (nested routes), render them
     if (children) {
       return children;
@@ -162,7 +166,17 @@ const Dashboard = ({ children }) => {
       case "admin":
         return <AdminDashboardContent />;
       default:
-        return <DefaultDashboardContent />;
+        // Fallback: try to determine role from user object directly
+        const fallbackRole = user?.role;
+        console.log('Fallback role:', fallbackRole);
+        
+        if (fallbackRole === 'student') {
+          return <StudentDashboard />;
+        } else if (fallbackRole === 'teacher') {
+          return <TeacherDashboard />;
+        } else {
+          return <DefaultDashboardContent />;
+        }
     }
   };
 
