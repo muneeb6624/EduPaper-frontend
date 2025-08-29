@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Provider, useSelector } from 'react-redux';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
@@ -12,6 +11,7 @@ import Register from './pages/auth/Register';
 import Dashboard from './pages/dashboard/Dashboard';
 import ExamInterface from './components/ui/ExamInterface';
 import PaperCreator from './components/ui/PaperCreator';
+import ExamPage from './pages/exam/ExamPage'; // Import ExamPage
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
@@ -92,8 +92,8 @@ const AppRoutes = () => {
               <Dashboard>
                 <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
                   <div className="text-center">
-                    <h1 className="text-4xl font-bold mb-4">Student Exams</h1>
-                    <p className="text-slate-300">Browse all available exams</p>
+                    <h1 className="text-4xl font-bold mb-4">Available Exams</h1>
+                    <p className="text-slate-300">Take your exams</p>
                   </div>
                 </div>
               </Dashboard>
@@ -105,7 +105,7 @@ const AppRoutes = () => {
           path="/exam/:id"
           element={
             <ProtectedRoute allowedRoles={['student']}>
-              <ExamInterface />
+              <ExamPage />
             </ProtectedRoute>
           }
         />

@@ -34,17 +34,13 @@ const TeacherDashboard = () => {
     data: papersResponse, 
     isLoading: papersLoading, 
     error: papersError 
-  } = useGetTeacherPapersQuery(user?._id, {
-    skip: !user?._id,
-  });
+  } = useGetTeacherPapersQuery();
 
   const {
     data: studentsData,
     isLoading: studentsLoading,
     error: studentsError,
-  } = useGetStudentsQuery(undefined, {
-    skip: !user?._id,
-  });
+  } = useGetStudentsQuery();
 
   const handleCreatePaper = () => {
     navigate('/papers/create');

@@ -23,7 +23,7 @@ export const paperApi = createApi({
   endpoints: (builder) => ({
     // Get all papers for a user
     getPapers: builder.query({
-      query: (userId) => `papers/user/${userId}`,
+      query: () => `papers`,
       providesTags: ['Paper'],
       transformResponse: (response) => {
         return {
@@ -75,7 +75,7 @@ export const paperApi = createApi({
 
     // Get papers created by teacher
     getTeacherPapers: builder.query({
-      query: (teacherId) => `papers/teacher/${teacherId}`,
+      query: () => `papers`,
       providesTags: ['Paper'],
       transformResponse: (response) => {
         return {
@@ -96,7 +96,7 @@ export const paperApi = createApi({
 
     // Get assigned papers for student
     getAssignedPapers: builder.query({
-      query: (studentId) => `papers/assigned/${studentId}`,
+      query: () => `papers`,
       providesTags: ['Paper'],
       transformResponse: (response) => {
         return {

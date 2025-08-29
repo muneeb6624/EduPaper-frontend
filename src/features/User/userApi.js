@@ -22,10 +22,10 @@ export const userApi = createApi({
   endpoints: (builder) => ({
     // Get all students (for teachers)
     getStudents: builder.query({
-      query: () => 'users/students',
+      query: () => 'users',
       providesTags: ['User'],
       transformResponse: (response) => {
-        return response.students || response || [];
+        return response.users || response || [];
       },
     }),
 

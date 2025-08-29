@@ -3,7 +3,7 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
 const baseQuery = fetchBaseQuery({
-  baseUrl: 'http://localhost:5000/api/attempts',
+  baseUrl: 'http://localhost:5000/api',
   prepareHeaders: (headers, { getState }) => {
     const token = getState().auth.token;
     
@@ -24,8 +24,8 @@ export const attemptApi = createApi({
     // Start attempt
     startAttempt: builder.mutation({
       query: (paperId) => ({
-        url: `/start/${paperId}`,
-        method: 'POST',
+        url: `/papers/${paperId}/attempt`,
+        method: 'GET',
       }),
       invalidatesTags: ['Attempt'],
     }),
@@ -33,7 +33,7 @@ export const attemptApi = createApi({
     // Submit attempt
     submitAttempt: builder.mutation({
       query: ({ paperId, answers }) => ({
-        url: `/${paperId}/submit`,
+        url: `/papers/${paperId}/submit`,
         method: 'POST',
         body: { answers },
       }),
@@ -42,7 +42,7 @@ export const attemptApi = createApi({
 
     // Get student attempts
     getStudentAttempts: builder.query({
-      query: (studentId) => `/student/${studentId}`,
+      query: (studentId) => `/results/student/${studentId}`,
       providesTags: ['Attempt'],
       transformResponse: (response) => {
         return response.attempts || response || [];
@@ -51,7 +51,7 @@ export const attemptApi = createApi({
 
     // Get paper attempts (for teachers)
     getPaperAttempts: builder.query({
-      query: (paperId) => `/paper/${paperId}`,
+      query: (paperId) => `/results/class/${paperId}`,
       providesTags: ['Attempt'],
       transformResponse: (response) => {
         return response.attempts || response || [];
@@ -60,14 +60,14 @@ export const attemptApi = createApi({
 
     // Get single attempt
     getAttempt: builder.query({
-      query: (id) => `/${id}`,
+      query: (id) => `/results/${id}`,
       providesTags: (result, error, id) => [{ type: 'Attempt', id }],
     }),
 
     // Grade attempt (for teachers)
     gradeAttempt: builder.mutation({
       query: ({ attemptId, gradedAnswers }) => ({
-        url: `/${attemptId}/grade`,
+        url: `/attempts/${attemptId}/grade`,
         method: 'PUT',
         body: { gradedAnswers },
       }),

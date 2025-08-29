@@ -28,17 +28,13 @@ const StudentDashboard = () => {
     data: papersResponse, 
     isLoading: papersLoading, 
     error: papersError 
-  } = useGetAssignedPapersQuery(user?._id, {
-    skip: !user?._id,
-  });
+  } = useGetAssignedPapersQuery();
 
   const {
     data: attemptsData,
     isLoading: attemptsLoading,
     error: attemptsError,
-  } = useGetStudentAttemptsQuery(user?._id, {
-    skip: !user?._id,
-  });
+  } = useGetStudentAttemptsQuery();
 
   const handleStartExam = (paper) => {
     navigate(`/exam/${paper._id}`);
