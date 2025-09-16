@@ -6,7 +6,6 @@ import {
   Plus,
   FileText, 
   Users, 
-  TrendingUp, 
   Clock,
   Eye,
   Edit,

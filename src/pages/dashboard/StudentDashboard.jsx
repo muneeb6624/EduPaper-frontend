@@ -81,11 +81,12 @@ const StudentDashboard = () => {
   }
 
   // Debug: Log API responses and errors
-  console.log('User:', user);
-  console.log('Papers Response:', papersResponse);
-  console.log('Papers Error:', papersError);
-  console.log('Results Response:', resultsResponse);
-  console.log('Results Error:', resultsError);
+  console.log('👤 Student User:', user);
+  console.log('📋 Papers Response:', papersResponse);
+  console.log('❌ Papers Error:', papersError);
+  console.log('🏆 Results Response:', resultsResponse);
+  console.log('❌ Results Error:', resultsError);
+  console.log('🔍 User ID for queries:', user?._id);
 
   // Extract data from API responses (handle empty/null responses)
   const papers = papersResponse?.papers || [];

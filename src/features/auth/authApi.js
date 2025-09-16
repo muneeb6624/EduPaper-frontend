@@ -1,21 +1,21 @@
 // src/features/auth/authApi.js
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
-import { logout } from './authSlice';
+import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import { logout } from "./authSlice";
 
 export const selectIsAuthenticated = (state) => state.auth.isAuthenticated;
 export const selectUserRole = (state) => state.auth.user?.role || null;
 
 // Base query with auth token injection
 const baseQuery = fetchBaseQuery({
-  baseUrl: 'http://localhost:5000/api/auth',
+  baseUrl: import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api",
   prepareHeaders: (headers, { getState }) => {
     const token = getState().auth.token;
 
     if (token) {
-      headers.set('authorization', `Bearer ${token}`);
+      headers.set("authorization", `Bearer ${token}`);
     }
 
-    headers.set('Content-Type', 'application/json');
+    headers.set("Content-Type", "application/json");
     return headers;
   },
 });
@@ -33,15 +33,15 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
 };
 
 export const authApi = createApi({
-  reducerPath: 'authApi',
+  reducerPath: "authApi",
   baseQuery: baseQueryWithReauth,
-  tagTypes: ['Auth'],
+  tagTypes: ["Auth"],
   endpoints: (builder) => ({
     // Login mutation
     loginUser: builder.mutation({
       query: (credentials) => ({
-        url: '/login',
-        method: 'POST',
+        url: "/auth/login",
+        method: "POST",
         body: credentials,
       }),
       transformResponse: (response) => {
@@ -50,8 +50,8 @@ export const authApi = createApi({
           token: response.token,
           user: response.user || {
             role: response.role,
-            name: response.name || 'User',
-            email: response.email || '',
+            name: response.name || "User",
+            email: response.email || "",
           },
         };
       },
@@ -59,8 +59,8 @@ export const authApi = createApi({
     // Register mutation
     registerUser: builder.mutation({
       query: (userData) => ({
-        url: '/register',
-        method: 'POST',
+        url: "/auth/register",
+        method: "POST",
         body: userData,
       }),
       transformResponse: (response) => {
@@ -69,8 +69,8 @@ export const authApi = createApi({
           token: response.token,
           user: response.user || {
             role: response.role,
-            name: response.name || 'User',
-            email: response.email || '',
+            name: response.name || "User",
+            email: response.email || "",
           },
         };
       },
@@ -78,20 +78,20 @@ export const authApi = createApi({
     // Refresh token mutation
     refreshToken: builder.mutation({
       query: (token) => ({
-        url: '/refresh',
-        method: 'POST',
+        url: "/auth/refresh",
+        method: "POST",
         body: { token },
       }),
     }),
     // Get profile query
     getProfile: builder.query({
       query: () => ({
-        url: '/profile',
-        method: 'GET',
+        url: "/me",
+        method: "GET",
       }),
       transformResponse: (response) => {
         // Backend returns { user }
-        return response.user;
+        return response.user || response;
       },
     }),
   }),

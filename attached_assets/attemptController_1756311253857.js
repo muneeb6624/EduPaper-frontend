@@ -52,7 +52,7 @@ class AttemptController {
         maxMarks: q.marks,
         answer: "",
         isCorrect: null,
-        marksObtained: 0,
+        obtainedMarks: 0,
       }));
 
       const attempt = await Attempt.create({
@@ -112,7 +112,7 @@ class AttemptController {
             const question = paper.questions.id(ans.questionId);
             if (question) {
               ans.isCorrect = submitted.answer === question.correctAnswer;
-              ans.marksObtained = ans.isCorrect ? question.marks : 0;
+              ans.obtainedMarks = ans.isCorrect ? question.marks : 0;
               ans.autoGraded = true;
               ans.gradedAt = new Date();
             }
@@ -122,7 +122,7 @@ class AttemptController {
 
       // Compute scoring
       const obtainedMarks = attempt.answers.reduce(
-        (sum, a) => sum + (a.marksObtained || 0),
+        (sum, a) => sum + (a.obtainedMarks || 0),
         0
       );
       const totalMarks = paper.settings.totalMarks;
@@ -161,7 +161,7 @@ class AttemptController {
   async gradeAttempt(req, res) {
     try {
       const { id } = req.params; // attemptId
-      const { gradedAnswers } = req.body; // [{ questionId, marksObtained, feedback }]
+      const { gradedAnswers } = req.body; // [{ questionId, obtainedMarks, feedback }]
 
       const attempt = await Attempt.findById(id);
       if (!attempt) {
@@ -174,7 +174,7 @@ class AttemptController {
       gradedAnswers.forEach((ga) => {
         const ans = attempt.answers.id(ga.questionId);
         if (ans) {
-          ans.marksObtained = ga.marksObtained;
+          ans.obtainedMarks = ga.obtainedMarks;
           ans.feedback = ga.feedback || "";
           ans.autoGraded = false;
           ans.gradedAt = new Date();
@@ -183,7 +183,7 @@ class AttemptController {
 
       // Update scoring
       const obtainedMarks = attempt.answers.reduce(
-        (sum, a) => sum + (a.marksObtained || 0),
+        (sum, a) => sum + (a.obtainedMarks || 0),
         0
       );
       const totalMarks = attempt.scoring.totalMarks;

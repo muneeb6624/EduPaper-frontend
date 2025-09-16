@@ -12,6 +12,14 @@ import Register from './pages/auth/Register';
 import Dashboard from './pages/dashboard/Dashboard';
 import ExamInterface from './components/ui/ExamInterface';
 import PaperCreator from './components/ui/PaperCreator';
+import ExamsPage from './pages/student/ExamsPage';
+import ResultsPage from './pages/student/ResultsPage';
+import PapersPage from './pages/teacher/PapersPage';
+import AssignStudentsPage from './pages/teacher/AssignStudentsPage';
+import GradingPage from './pages/teacher/GradingPage';
+import AnalyticsPage from './pages/teacher/AnalyticsPage';
+import HistoryPage from './pages/student/HistoryPage';
+import ViewAttemptsPage from './pages/teacher/ViewAttemptsPage';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
@@ -90,12 +98,7 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={['student']}>
               <Dashboard>
-                <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
-                  <div className="text-center">
-                    <h1 className="text-4xl font-bold mb-4">Student Exams</h1>
-                    <p className="text-slate-300">Browse all available exams</p>
-                  </div>
-                </div>
+                <ExamsPage />
               </Dashboard>
             </ProtectedRoute>
           }
@@ -115,12 +118,7 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={['student']}>
               <Dashboard>
-                <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
-                  <div className="text-center">
-                    <h1 className="text-4xl font-bold mb-4">My Results</h1>
-                    <p className="text-slate-300">View your exam results</p>
-                  </div>
-                </div>
+                <ResultsPage />
               </Dashboard>
             </ProtectedRoute>
           }
@@ -131,12 +129,7 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={['student']}>
               <Dashboard>
-                <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
-                  <div className="text-center">
-                    <h1 className="text-4xl font-bold mb-4">Exam History</h1>
-                    <p className="text-slate-300">View your exam history</p>
-                  </div>
-                </div>
+                <HistoryPage />
               </Dashboard>
             </ProtectedRoute>
           }
@@ -148,12 +141,7 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={['teacher']}>
               <Dashboard>
-                <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
-                  <div className="text-center">
-                    <h1 className="text-4xl font-bold mb-4">My Papers</h1>
-                    <p className="text-slate-300">Manage your papers</p>
-                  </div>
-                </div>
+                <PapersPage />
               </Dashboard>
             </ProtectedRoute>
           }
@@ -185,16 +173,33 @@ const AppRoutes = () => {
         />
 
         <Route
+          path="/papers/:id/assign"
+          element={
+            <ProtectedRoute allowedRoles={['teacher']}>
+              <Dashboard>
+                <AssignStudentsPage />
+              </Dashboard>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/papers/:id/attempts"
+          element={
+            <ProtectedRoute allowedRoles={['teacher']}>
+              <Dashboard>
+                <ViewAttemptsPage />
+              </Dashboard>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/grading"
           element={
             <ProtectedRoute allowedRoles={['teacher']}>
               <Dashboard>
-                <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
-                  <div className="text-center">
-                    <h1 className="text-4xl font-bold mb-4">Grading</h1>
-                    <p className="text-slate-300">Grade student submissions</p>
-                  </div>
-                </div>
+                <GradingPage />
               </Dashboard>
             </ProtectedRoute>
           }
@@ -205,12 +210,7 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={['teacher']}>
               <Dashboard>
-                <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
-                  <div className="text-center">
-                    <h1 className="text-4xl font-bold mb-4">Analytics</h1>
-                    <p className="text-slate-300">View analytics and insights</p>
-                  </div>
-                </div>
+                <AnalyticsPage />
               </Dashboard>
             </ProtectedRoute>
           }

@@ -2,7 +2,7 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
 const baseQuery = fetchBaseQuery({
-  baseUrl: 'http://localhost:5000/api',
+  baseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api',
   prepareHeaders: (headers, { getState }) => {
     const token = getState().auth.token;
     if (token) {
@@ -18,6 +18,23 @@ export const userApi = createApi({
   baseQuery,
   tagTypes: ['User', 'Users'],
   endpoints: (builder) => ({
+    
+    // Get current user profile
+    getProfile: builder.query({
+      query: () => '/me',
+      providesTags: ['User'],
+      transformResponse: (response) => response.user || response,
+    }),
+
+    // Update current user profile
+    updateProfile: builder.mutation({
+      query: (profileData) => ({
+        url: '/me',
+        method: 'PUT',
+        body: profileData,
+      }),
+      invalidatesTags: ['User'],
+    }),
     
     // Get all users (admin only)
     getAllUsers: builder.query({
@@ -141,6 +158,8 @@ export const userApi = createApi({
 });
 
 export const {
+  useGetProfileQuery,
+  useUpdateProfileMutation,
   useGetAllUsersQuery,
   useGetUserByIdQuery,
   useUpdateUserMutation,

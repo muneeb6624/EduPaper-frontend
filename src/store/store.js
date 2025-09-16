@@ -6,12 +6,13 @@ import { paperApi } from '../features/papers/paperApi';
 import { attemptApi } from '../features/attempts/attemptApi';
 import { resultApi } from '../features/results/resultApi';
 import { userApi } from '../features/User/userApi';
+import { notificationApi } from '../features/notifications/notificationApi';
 
 // Create the main API slice
 export const api = createApi({
   reducerPath: 'api',
   baseQuery: fetchBaseQuery({
-    baseUrl: 'http://localhost:5000/api', // Point to your backend
+    baseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api', // Point to your backend
     prepareHeaders: (headers, { getState }) => {
       const token = getState().auth.token;
       if (token) {
@@ -32,6 +33,7 @@ export const store = configureStore({
     [attemptApi.reducerPath]: attemptApi.reducer,
     [resultApi.reducerPath]: resultApi.reducer,
     [userApi.reducerPath]: userApi.reducer,
+    [notificationApi.reducerPath]: notificationApi.reducer,
     user: userApi.reducer, // Add user as a reducer
   },
   middleware: (getDefaultMiddleware) =>
@@ -45,6 +47,7 @@ export const store = configureStore({
       attemptApi.middleware,
       resultApi.middleware,
       userApi.middleware,
+      notificationApi.middleware,
     ),
 });
 

@@ -1,9 +1,8 @@
-
 // src/features/papers/paperApi.js
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
 const baseQuery = fetchBaseQuery({
-  baseUrl: 'http://localhost:5000/api/',
+  baseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api',
   prepareHeaders: (headers, { getState }) => {
     const token = getState().auth.token;
     
@@ -21,30 +20,28 @@ export const paperApi = createApi({
   baseQuery,
   tagTypes: ['Paper'],
   endpoints: (builder) => ({
-    // Get all papers
+    // ✅ Get all papers
     getPapers: builder.query({
-      query: (studentId) => `/${studentId}`,
+      query: () => '/papers',
       providesTags: ['Paper'],
-      transformResponse: (response) => {
-        return {
-          papers: response.papers || response || []
-        };
-      },
+      transformResponse: (response) => ({
+        papers: response.papers || response || [],
+      }),
     }),
 
-    // Get single paper
+    // ✅ Get single paper
     getPaper: builder.query({
-      query: (id) => `/${id}`,
+      query: (id) => `/papers/${id}`,
       providesTags: (result, error, id) => [{ type: 'Paper', id }],
     }),
 
-    // Get single paper by ID (alias for getPaper)
+    // ✅ Alias for getPaper
     getPaperById: builder.query({
-      query: (id) => `/${id}`,
+      query: (id) => `/papers/${id}`,
       providesTags: (result, error, id) => [{ type: 'Paper', id }],
     }),
 
-    // Create paper
+    // ✅ Create paper
     createPaper: builder.mutation({
       query: (paperData) => ({
         url: '/papers',
@@ -53,31 +50,24 @@ export const paperApi = createApi({
       }),
       invalidatesTags: ['Paper'],
     }),
-    
 
-    // Update paper
+    // ✅ Update paper
     updatePaper: builder.mutation({
       query: ({ id, ...paperData }) => ({
-        url: `/${id}`,
+        url: `/papers/${id}`,
         method: 'PUT',
         body: paperData,
       }),
       invalidatesTags: (result, error, { id }) => [{ type: 'Paper', id }],
     }),
 
-    // Delete paper
+    // ✅ Delete paper
     deletePaper: builder.mutation({
       query: (id) => ({
-        url: `/${id}`,
+        url: `/papers/${id}`,
         method: 'DELETE',
       }),
       invalidatesTags: ['Paper'],
-    }),
-
-    // Get papers created by teacher
-    getTeacherPapers: builder.query({
-      query: (teacherId) => `/teacher/${teacherId}`,
-      providesTags: ['Paper'],
     }),
   }),
 });
@@ -89,5 +79,4 @@ export const {
   useCreatePaperMutation,
   useUpdatePaperMutation,
   useDeletePaperMutation,
-  useGetTeacherPapersQuery,
 } = paperApi;

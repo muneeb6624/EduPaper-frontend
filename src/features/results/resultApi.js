@@ -3,7 +3,7 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
 const baseQuery = fetchBaseQuery({
-  baseUrl: 'http://localhost:5000/api/results',
+  baseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api',
   prepareHeaders: (headers, { getState }) => {
     const token = getState().auth.token;
     
@@ -23,23 +23,23 @@ export const resultApi = createApi({
   endpoints: (builder) => ({
     // Get student results
     getStudentResults: builder.query({
-      query: (studentId) => `/student/${studentId}`,
+      query: (studentId) => `/results/student/${studentId}`,
       providesTags: ['Result'],
       transformResponse: (response) => {
         return response.results || response || [];
       },
     }),
 
-    // Get paper results
+    // Get paper results (class results)
     getPaperResults: builder.query({
-      query: (paperId) => `/paper/${paperId}`,
+      query: (paperId) => `/results/class/${paperId}`,
       providesTags: ['Result'],
     }),
 
     // Submit result
     submitResult: builder.mutation({
       query: (resultData) => ({
-        url: '/',
+        url: '/results',
         method: 'POST',
         body: resultData,
       }),
@@ -48,7 +48,7 @@ export const resultApi = createApi({
 
     // Get single result
     getResult: builder.query({
-      query: (id) => `/${id}`,
+      query: (id) => `/results/${id}`,
       providesTags: (result, error, id) => [{ type: 'Result', id }],
     }),
   }),
