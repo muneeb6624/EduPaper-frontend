@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import {  AnimatePresence } from 'framer-motion';
 import { useSelector } from 'react-redux';
 import {
   Bell,
@@ -11,22 +11,23 @@ import {
   X,
   MoreHorizontal,
 } from 'lucide-react';
-import { selectCurrentUser, selectUserRole } from '../../features/auth/authSlice';
+import { selectCurrentUser,  } from '../../features/auth/authSlice';
 import { 
   useGetNotificationsQuery, 
   useMarkAsReadMutation, 
   useMarkAllAsReadMutation, 
   useDeleteNotificationMutation 
 } from '../../features/notifications/notificationApi';
+import { motion } from 'framer-motion';
 
 const NotificationDropdown = () => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
   const user = useSelector(selectCurrentUser);
-  const userRole = useSelector(selectUserRole);
+  // const userRole = useSelector(selectUserRole);
 
   // API hooks
-  const { data: notificationData, isLoading } = useGetNotificationsQuery(
+  const { data: notificationData } = useGetNotificationsQuery(
     { limit: 10 },
     { skip: !user?._id }
   );
@@ -87,10 +88,10 @@ const NotificationDropdown = () => {
     }
   };
 
-  const getTimeAgo = (timeString) => {
-    // Simple time ago function
-    return timeString;
-  };
+  // const getTimeAgo = (timeString) => {
+  //   // Simple time ago function
+  //   return timeString;
+  // };
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -118,7 +119,7 @@ const NotificationDropdown = () => {
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            className="absolute right-0 top-full mt-2 w-80 bg-gray-800/95 backdrop-blur-sm border border-gray-700 rounded-xl shadow-2xl z-50"
+            className="absolute right-0 top-full mt-2 w-80 bg-gray-800/95 backdrop-blur-sm border border-gray-700 rounded-xl shadow-2xl z-50 overflow-hidden"
             initial={{ opacity: 0, y: -10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
